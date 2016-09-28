@@ -1,0 +1,121 @@
+#!/bin/bash
+set -o errexit -o nounset -o pipefail
+function -h {
+cat <<USAGE
+ USAGE: pgmini
+        pgmini setup
+        pgmini start|stop|status
+        pgmini connect
+        pgmini clean
+
+  Creates and manages the lifecycle of a Postgres database, using the system
+  server installation.
+
+  This is intended to facilitate embedded applications, ephemeral database for
+  data processing applications, and testing.
+
+USAGE
+}; function --help { -h ;}                 # A nice way to handle -h and --help
+export LC_ALL=en_US.UTF-8                    # A locale that works consistently
+
+d="$(pwd -P)"
+
+root="$d"/var
+role=mini
+ctl=pg_ctl
+sql=psql
+
+function main {
+  if [[ $# -gt 0 ]]
+  then
+    case "$1" in
+      start|stop|status) ctl "$@" ;;
+      *)                 err "Not sure what to do with: $@" ;;
+    esac
+  else
+    setup && connect
+  fi
+}
+
+function setup {
+  if [[ -d "$root" ]]
+  then msg "NB: Skipping setup; dir exists: $root"
+  else initialize
+  fi
+}
+
+function connect {
+  is_running || ctl start -w
+  trap finalize EXIT
+  sql
+}
+
+function init_cluster_directory {
+  local tmp=/tmp/pg-embed~"$(whoami)".$$
+  initdb -D "$root"/db -A trust --locale en_US.UTF-8
+  sed "s|^#unix_socket_directory = .*$|unix_socket_directory = '"$root"'|
+       s|^#unix_socket_directories = .*$|unix_socket_directories = '"$root"'|
+       s|^#listen_addresses = .*$|listen_addresses = ''|
+       s|^datestyle = .*$|datestyle = 'iso, ymd'|
+       s|^#intervalstyle = .*$|intervalstyle = 'iso_8601'|
+       s|^#timezone = .*$|timezone = 'UTC'|
+      " "$root"/db/postgresql.conf > "$tmp"
+  cat "$tmp" > "$root"/db/postgresql.conf
+  rm -f "$tmp"
+}
+
+function init_database_and_user {
+  createuser -h "$root" "$role" --superuser
+  createdb -h "$root" "$role" "Local database."
+}
+
+function ctl {
+  "$ctl" -D "$root"/db -l "$root"/log "$@"
+}
+
+function sql {
+  "$sql" -h "$root" --dbname="user=$role dbname=$role"
+}
+
+function finalize {
+  ctl stop -m fast 2>/dev/null || true
+  kill %1 2>/dev/null || true
+}
+
+function initialize {
+  init_cluster_directory
+  trap finalize EXIT
+  touch "$root"/log
+  tail -qF "$root"/log &
+  ctl start -w
+  init_database_and_user
+  ctl stop -w
+  kill %1
+  wait %1 2>/dev/null || true
+}
+
+function is_running {
+  ctl status | fgrep -q 'server is running'
+}
+
+function clean {
+  msg "Removing: $root"
+  [[ ! -e "$root" ]] || rm -r "$root"
+}
+
+##################################################################### Utilities
+
+function msg { out "$*" >&2 ;}
+function err { local x=$? ; msg "$*" ; return $(( $x == 0 ? 1 : $x )) ;}
+function out { printf '%s\n' "$*" ;}
+
+# Handles "no-match" exit code specified by POSIX for filtering tools.
+function maybe { "$@" || return $(( $? == 1 ? 0 : $? )) ;}
+
+
+######################### Delegates to subcommands or runs main, as appropriate
+
+if declare -f -- "${1:-}" >/dev/null
+then "$@"
+else main "$@"
+fi
