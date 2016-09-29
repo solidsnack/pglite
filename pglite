@@ -2,12 +2,12 @@
 set -o errexit -o nounset -o pipefail
 function -h {
 cat <<USAGE
- USAGE: pgmini
-        pgmini setup
-        pgmini url
-        pgmini start|stop|status
-        pgmini connect
-        pgmini clean
+ USAGE: pglite
+        pglite setup
+        pglite url
+        pglite start|stop|status
+        pglite connect
+        pglite clean
 
   Creates and manages the lifecycle of a Postgres database, using the system
   server installation.
@@ -15,23 +15,23 @@ cat <<USAGE
   This is intended to facilitate embedded applications, ephemeral database for
   data processing applications, and testing.
 
- pgmini setup
+ pglite setup
 
   Create the database directory.
 
- pgmini url
+ pglite url
 
   Obtain the Postgres URL for connecting (always a UNIX socket-based URL).
 
- pgmini start|stop|status
+ pglite start|stop|status
 
   Start, stop or poll the status of the server.
 
- pgmini connect
+ pglite connect
 
   Connect to the database, starting the server if it's not already started.
 
- pgmini rm
+ pglite rm
 
   Remove the database directory and its configuration.
 
@@ -43,7 +43,7 @@ d="$(pwd -P)"
 
 root="$d"/var
 admin="$(whoami)"
-role=mini
+role=lite
 
 function main {
   local args=() personality=postgres
@@ -58,7 +58,9 @@ function main {
     esac
     shift
   done
+
   set_personality "$personality"
+
   if [[ ${#args[@]} -gt 0 ]]
   then "${args[@]}"
   else setup && connect
@@ -85,7 +87,23 @@ function set_personality {
   esac
 }
 
+function load_personality {
+  set_personality "$(< "$root"/personality)"
+}
+
 function setup {
+  local personality=postgres
+  while [[ $# -gt 0 ]]
+  do
+    case "$1" in
+      -p|--personality)  personality="$2" ; shift ;;
+      *)                 err "Not sure how to handle: $@" ;;
+    esac
+    shift
+  done
+
+  set_personality "$personality"
+
   if [[ -d "$root" ]]
   then msg "NB: Skipping setup; dir exists: $root"
   else initialize
@@ -93,9 +111,10 @@ function setup {
 }
 
 function connect {
+  load_personality
   is_running || ctl start -w
   trap finalize EXIT
-  sql
+  sql "$@"
 }
 
 function url {
@@ -103,17 +122,23 @@ function url {
 }
 
 function init_cluster_directory {
-  local tmp=/tmp/pg-embed~"$(whoami)".$$
+  local tmp=/tmp/pglite~"$(whoami)".$$
+
   "$init" -D "$root"/db -A trust --locale en_US.UTF-8
-  sed "s|^#unix_socket_directory = .*$|unix_socket_directory = '"$root"'|
-       s|^#unix_socket_directories = .*$|unix_socket_directories = '"$root"'|
-       s|^#listen_addresses = .*$|listen_addresses = ''|
-       s|^datestyle = .*$|datestyle = 'iso, ymd'|
-       s|^#intervalstyle = .*$|intervalstyle = 'iso_8601'|
-       s|^#timezone = .*$|timezone = 'UTC'|
-      " "$root"/db/"$conf" > "$tmp"
-  cat "$tmp" > "$root"/db/"$conf"
-  rm -f "$tmp"
+
+  ( trap 'rm -rf "$tmp"' EXIT
+    mkdir -p "$tmp"
+    sed "s|^#unix_socket_directory = .*$|unix_socket_directory = '"$root"'|
+         s|^#unix_socket_directories = .*$|unix_socket_directories = '"$root"'|
+         s|^#listen_addresses = .*$|listen_addresses = ''|
+         s|^datestyle = .*$|datestyle = 'iso, ymd'|
+         s|^#intervalstyle = .*$|intervalstyle = 'iso_8601'|
+         s|^#timezone = .*$|timezone = 'UTC'|
+        " "$root"/db/"$conf" > "$tmp"/conf
+
+    cat "$tmp"/conf > "$root"/db/"$conf" )
+
+  out "$personality" > "$root"/personality
 }
 
 function init_database_and_user {
@@ -136,8 +161,10 @@ function sql_admin {
 }
 
 function finalize {
+  local code=$?
   ctl stop -m fast 2>/dev/null || true
   kill %1 2>/dev/null || true
+  exit $code
 }
 
 function initialize {
