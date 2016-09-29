@@ -4,6 +4,7 @@ function -h {
 cat <<USAGE
  USAGE: pgmini
         pgmini setup
+        pgmini url
         pgmini start|stop|status
         pgmini connect
         pgmini clean
@@ -14,6 +15,26 @@ cat <<USAGE
   This is intended to facilitate embedded applications, ephemeral database for
   data processing applications, and testing.
 
+ pgmini setup
+
+  Create the database directory.
+
+ pgmini url
+
+  Obtain the Postgres URL for connecting (always a UNIX socket-based URL).
+
+ pgmini start|stop|status
+
+  Start, stop or poll the status of the server.
+
+ pgmini connect
+
+  Connect to the database, starting the server if it's not already started.
+
+ pgmini rm
+
+  Remove the database directory and its configuration.
+
 USAGE
 }; function --help { -h ;}                 # A nice way to handle -h and --help
 export LC_ALL=en_US.UTF-8                    # A locale that works consistently
@@ -21,20 +42,47 @@ export LC_ALL=en_US.UTF-8                    # A locale that works consistently
 d="$(pwd -P)"
 
 root="$d"/var
+admin="$(whoami)"
 role=mini
-ctl=pg_ctl
-sql=psql
 
 function main {
-  if [[ $# -gt 0 ]]
-  then
+  local args=() personality=postgres
+  while [[ $# -gt 0 ]]
+  do
     case "$1" in
-      start|stop|status) ctl "$@" ;;
-      *)                 err "Not sure what to do with: $@" ;;
+      start|stop|status) args+=( ctl "$1" ) ;;
+      rm)                args+=( clean ) ;;
+      -p|--personality)  personality="$2" ; shift ;;
+      *)                 args+=( "$1" ) ;;
+      --)                args+=( "$@" ) ; break ;;
     esac
-  else
-    setup && connect
+    shift
+  done
+  set_personality "$personality"
+  if [[ ${#args[@]} -gt 0 ]]
+  then "${args[@]}"
+  else setup && connect
   fi
+}
+
+# Database personality: names of administrative commands and files.
+declare ctl=false sql=false init=false conf=/dev/null
+
+function set_personality {
+  case "$1" in
+    postgres)
+      ctl=pg_ctl
+      sql=psql
+      init=initdb
+      conf=postgresql.conf ;;
+    pipeline)
+      ctl=pipeline-ctl
+      sql=pipeline
+      init=pipeline-init
+      conf=pipelinedb.conf ;;
+    *) msg "Unrecognized personality: $1"
+       err 'Please choose from: pipeline postgres'
+  esac
 }
 
 function setup {
@@ -50,23 +98,29 @@ function connect {
   sql
 }
 
+function url {
+  out "postgres://$role@[$root]/$role"
+}
+
 function init_cluster_directory {
   local tmp=/tmp/pg-embed~"$(whoami)".$$
-  initdb -D "$root"/db -A trust --locale en_US.UTF-8
+  "$init" -D "$root"/db -A trust --locale en_US.UTF-8
   sed "s|^#unix_socket_directory = .*$|unix_socket_directory = '"$root"'|
        s|^#unix_socket_directories = .*$|unix_socket_directories = '"$root"'|
        s|^#listen_addresses = .*$|listen_addresses = ''|
        s|^datestyle = .*$|datestyle = 'iso, ymd'|
        s|^#intervalstyle = .*$|intervalstyle = 'iso_8601'|
        s|^#timezone = .*$|timezone = 'UTC'|
-      " "$root"/db/postgresql.conf > "$tmp"
-  cat "$tmp" > "$root"/db/postgresql.conf
+      " "$root"/db/"$conf" > "$tmp"
+  cat "$tmp" > "$root"/db/"$conf"
   rm -f "$tmp"
 }
 
 function init_database_and_user {
-  createuser -h "$root" "$role" --superuser
-  createdb -h "$root" "$role" "Local database."
+sql_admin -v ON_ERROR_STOP=on <<SQL
+  CREATE ROLE "$role" WITH SUPERUSER LOGIN REPLICATION;
+  CREATE DATABASE "$role" WITH OWNER "$role";
+SQL
 }
 
 function ctl {
@@ -74,7 +128,11 @@ function ctl {
 }
 
 function sql {
-  "$sql" -h "$root" --dbname="user=$role dbname=$role"
+  "$sql" -h "$root" --dbname="user=$role dbname=$role" "$@"
+}
+
+function sql_admin {
+  "$sql" -h "$root" --dbname="user=$admin dbname=template1" "$@"
 }
 
 function finalize {
