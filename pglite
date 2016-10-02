@@ -88,7 +88,9 @@ function set_personality {
 }
 
 function load_personality {
-  set_personality "$(< "$root"/personality)"
+  if [[ -f "$root"/personality ]]
+  then set_personality "$(< "$root"/personality)"
+  fi
 }
 
 function setup {
@@ -111,7 +113,6 @@ function setup {
 }
 
 function connect {
-  load_personality
   is_running || ctl start -w
   trap finalize EXIT
   sql "$@"
@@ -149,6 +150,7 @@ SQL
 }
 
 function ctl {
+  load_personality
   "$ctl" -D "$root"/db -l "$root"/log "$@"
 }
 
