@@ -18,4 +18,7 @@ A tiny (~250 line) shell script that manages ephemeral Postgres databases.
 
 # To display your current database connection string
 ./pglite url
+
+# To simply connect to your database
+psq -d `./pglite url`
 ```
