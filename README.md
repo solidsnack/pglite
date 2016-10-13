@@ -16,9 +16,9 @@ A tiny (~250 line) shell script that manages ephemeral Postgres databases.
 # To remove your database and its configuration.
 ./pglite rm
 
-# To display your current database connection string
+# To display your current database connection string.
 ./pglite url
 
-# To simply connect to your database
-psq -d `./pglite url`
+# To simply connect to your database.
+psql -d `./pglite url`
 ```
