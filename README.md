@@ -12,5 +12,7 @@ A tiny (~250 line) shell script that manages ephemeral Postgres databases.
 
 # The start/stop/status family of commands are passed directly to pg_ctl.
 ./pglite start|stop|status
-```
 
+# To remove your database and its configuration.
+./pglite rm
+```
