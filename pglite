@@ -113,11 +113,11 @@ function setup {
 }
 
 function connect {
-  if ! is_running; then
-      ctl start -w
-      trap finalize EXIT
-  else
-      load_personality
+  load_personality
+  if ! is_running
+  then
+    ctl start -w
+    trap finalize EXIT
   fi
   sql "$@"
 }
