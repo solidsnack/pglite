@@ -7,7 +7,7 @@ cat <<USAGE
         pglite url
         pglite start|stop|status
         pglite connect
-        pglite clean
+        pglite rm
 
   Creates and manages the lifecycle of a Postgres database, using the system
   server installation.
