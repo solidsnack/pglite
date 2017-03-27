@@ -2,12 +2,12 @@
 set -o errexit -o nounset -o pipefail
 function -h {
 cat <<USAGE
- USAGE: pglite
-        pglite setup
-        pglite url
-        pglite start|stop|status
-        pglite connect
-        pglite rm
+ USAGE: pglite (-p|--personality <personality>)? (-d|--directory <path>)?
+        pglite setup (-p|--personality <personality>)? (-d|--directory <path>)?
+        pglite url (-d|--directory <path>)?
+        pglite start|stop|status (-d|--directory <path>)?
+        pglite connect (-d|--directory <path>)?
+        pglite rm (-d|--directory <path>)?
 
   Creates and manages the lifecycle of a Postgres database, using the system
   server installation.
@@ -35,13 +35,21 @@ cat <<USAGE
 
   Remove the database directory and its configuration.
 
+ -p|--personality pipeline|postgres
+
+  Defaults to \`postgres\`. The \`pipeline\` personality exists to support
+  PipelineDB.
+
+ -d|--directory /path/to/data
+
+  Defaults to \`$root\`.
+
 USAGE
 }; function --help { -h ;}                 # A nice way to handle -h and --help
 export LC_ALL=en_US.UTF-8                    # A locale that works consistently
 
-d="$(pwd -P)"
-
-root="$d"/var
+args=()
+root=./var
 admin="$(whoami)"
 role=lite
 
@@ -53,6 +61,7 @@ function main {
       start|stop|status) args+=( ctl "$1" ) ;;
       rm)                args+=( clean ) ;;
       -p|--personality)  personality="$2" ; shift ;;
+      -d|--directory)    root="$2" ; shift ;;
       *)                 args+=( "$1" ) ;;
       --)                args+=( "$@" ) ; break ;;
     esac
@@ -94,18 +103,6 @@ function load_personality {
 }
 
 function setup {
-  local personality=postgres
-  while [[ $# -gt 0 ]]
-  do
-    case "$1" in
-      -p|--personality)  personality="$2" ; shift ;;
-      *)                 err "Not sure how to handle: $@" ;;
-    esac
-    shift
-  done
-
-  set_personality "$personality"
-
   if [[ -d "$root" ]]
   then msg "NB: Skipping setup; dir exists: $root"
   else initialize
@@ -123,18 +120,23 @@ function connect {
 }
 
 function url {
-  out "postgres://$role@[$root]/$role"
+  out "postgres://$role@[$(absroot)]/$role"
+}
+
+function absroot {
+  cd "$root" && pwd -P
 }
 
 function init_cluster_directory {
-  local tmp=/tmp/pglite~"$(whoami)".$$
+  local tmp=/tmp/pglite~"$(whoami)".$$ abs=
 
   "$init" -D "$root"/db -A trust --locale en_US.UTF-8
+  abs="$(absroot)"
 
   ( trap 'rm -rf "$tmp"' EXIT
     mkdir -p "$tmp"
-    sed "s|^#unix_socket_directory = .*$|unix_socket_directory = '"$root"'|
-         s|^#unix_socket_directories = .*$|unix_socket_directories = '"$root"'|
+    sed "s|^#unix_socket_directory = .*$|unix_socket_directory = '"$abs"'|
+         s|^#unix_socket_directories = .*$|unix_socket_directories = '"$abs"'|
          s|^#listen_addresses = .*$|listen_addresses = ''|
          s|^datestyle = .*$|datestyle = 'iso, ymd'|
          s|^#intervalstyle = .*$|intervalstyle = 'iso_8601'|
@@ -159,11 +161,11 @@ function ctl {
 }
 
 function sql {
-  "$sql" -h "$root" --dbname="user=$role dbname=$role" "$@"
+  "$sql" -h "$(absroot)" --dbname="user=$role dbname=$role" "$@"
 }
 
 function sql_admin {
-  "$sql" -h "$root" --dbname="user=$admin dbname=template1" "$@"
+  "$sql" -h "$(absroot)" --dbname="user=$admin dbname=template1" "$@"
 }
 
 function finalize {
@@ -206,7 +208,4 @@ function maybe { "$@" || return $(( $? == 1 ? 0 : $? )) ;}
 
 ######################### Delegates to subcommands or runs main, as appropriate
 
-if declare -f -- "${1:-}" >/dev/null
-then "$@"
-else main "$@"
-fi
+main "$@"
