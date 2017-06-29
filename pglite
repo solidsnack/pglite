@@ -135,12 +135,12 @@ function init_cluster_directory {
 
   ( trap 'rm -rf "$tmp"' EXIT
     mkdir -p "$tmp"
-    sed "s|^#unix_socket_directory = .*$|unix_socket_directory = '"$abs"'|
-         s|^#unix_socket_directories = .*$|unix_socket_directories = '"$abs"'|
-         s|^#listen_addresses = .*$|listen_addresses = ''|
-         s|^datestyle = .*$|datestyle = 'iso, ymd'|
-         s|^#intervalstyle = .*$|intervalstyle = 'iso_8601'|
-         s|^#timezone = .*$|timezone = 'UTC'|
+    sed "s|^#*unix_socket_directory = .*$|unix_socket_directory = '"$abs"'|
+         s|^#*unix_socket_directories = .*$|unix_socket_directories = '"$abs"'|
+         s|^#*listen_addresses = .*$|listen_addresses = ''|
+         s|^#*datestyle = .*$|datestyle = 'iso, ymd'|
+         s|^#*intervalstyle = .*$|intervalstyle = 'iso_8601'|
+         s|^#*timezone = .*$|timezone = 'UTC'|
         " "$root"/db/"$conf" > "$tmp"/conf
 
     cat "$tmp"/conf > "$root"/db/"$conf" )
