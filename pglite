@@ -49,7 +49,7 @@ USAGE
 export LC_ALL=en_US.UTF-8                    # A locale that works consistently
 
 args=()
-root=./var
+root=tmp/pglite
 admin="$(whoami)"
 role=lite
 
@@ -128,24 +128,29 @@ function absroot {
 }
 
 function init_cluster_directory {
-  local tmp=/tmp/pglite~"$(whoami)".$$ abs=
+  "$init" -D "$root"/db -A trust --nosync --locale en_US.UTF-8
 
-  "$init" -D "$root"/db -A trust --locale en_US.UTF-8
-  abs="$(absroot)"
+  # Use of include_dir limits this software to PG 9.3 and above.
+  if ! egrep -q "^include_dir = 'conf.d'" "$root"/db/"$conf"
+  then out "include_dir = 'conf.d'" >> "$root"/db/"$conf"
+  fi
 
-  ( trap 'rm -rf "$tmp"' EXIT
-    mkdir -p "$tmp"
-    sed "s|^#*unix_socket_directory = .*$|unix_socket_directory = '"$abs"'|
-         s|^#*unix_socket_directories = .*$|unix_socket_directories = '"$abs"'|
-         s|^#*listen_addresses = .*$|listen_addresses = ''|
-         s|^#*datestyle = .*$|datestyle = 'iso, ymd'|
-         s|^#*intervalstyle = .*$|intervalstyle = 'iso_8601'|
-         s|^#*timezone = .*$|timezone = 'UTC'|
-        " "$root"/db/"$conf" > "$tmp"/conf
+  mkdir -p "$root"/db/conf.d
 
-    cat "$tmp"/conf > "$root"/db/"$conf" )
+  base_configuration > "$root"/db/conf.d/00.pglite.conf
 
   out "$personality" > "$root"/personality
+}
+
+function base_configuration {
+# Use of unix_socket_directories limits this software to PG 9.3 and above.
+cat <<EOF
+unix_socket_directories = '"$(absroot)"'
+listen_addresses = ''
+datestyle = 'iso, ymd'
+intervalstyle = 'iso_8601'
+timezone = 'UTC'
+EOF
 }
 
 function init_database_and_user {
