@@ -187,7 +187,6 @@ function initialize {
   tail -qF "$root"/log &
   ctl start -w
   init_database_and_user
-  ctl stop -w
   kill %1
   wait %1 2>/dev/null || true
 }
