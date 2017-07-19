@@ -76,6 +76,18 @@ function main {
   fi
 }
 
+# On some systems, `pg_ctl` &al are not on the default PATH.
+function path_munger {
+  for bin in /usr/lib/postgresql/*/bin
+  do
+    [[ -d $bin ]] || continue
+    export PATH="$PATH":"$bin"
+    break
+  done
+}
+
+path_munger
+
 # Database personality: names of administrative commands and files.
 declare ctl=false sql=false init=false conf=/dev/null
 
