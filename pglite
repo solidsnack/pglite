@@ -200,6 +200,33 @@ function clean {
   [[ ! -e "$root" ]] || rm -r "$root"
 }
 
+function random_free_tcp_port {
+  local ports="${1:-1}" port="${2:-2048}" spacing=32
+  local free_ports=( )
+  local taken_ports=( $( netstat -aln | egrep ^tcp | fgrep LISTEN |
+                         awk '{print $4}' | egrep -o '[0-9]+$' |
+                         sort -n | uniq ) )
+
+  port=$(( port + (RANDOM % spacing) ))
+
+  for taken in "${taken_ports[@]}" 65535
+  do
+    while [[ $port -lt $taken && ${#free_ports[@]} -lt $ports ]]
+    do
+      free_ports+=( $port )
+      port=$(( port + spacing + (RANDOM % spacing) ))
+    done
+    if [[ $port -lt $((taken + spacing)) ]]
+    then port=$(( taken + spacing + (RANDOM % spacing) ))
+    fi
+  done
+
+  [[ ${#free_ports[@]} -ge $ports ]] || return 2
+
+  printf '%d\n' "${free_ports[@]}"
+}
+
+
 ##################################################################### Utilities
 
 function msg { out "$*" >&2 ;}
