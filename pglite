@@ -52,6 +52,8 @@ args=()
 root=tmp/pglite
 admin="$(whoami)"
 role=lite
+tcp=false
+tmp=/tmp/pglite~"$(whoami)"
 
 function main {
   local args=() personality=postgres
@@ -121,6 +123,31 @@ function setup {
   fi
 }
 
+function tmp {
+  local appending=false cmd=()
+  for arg in "$@"
+  do
+    if ! "$appending"
+    then
+      case "$arg" in
+        --) appending=true ; continue ;;
+        *)  err "Command to run should be passed as: -- cmd arg1 arg2 ..." ;;
+      esac
+    fi
+    cmd+=( "$arg" )
+  done
+  tcp=true
+  root="$tmp/$(date -u +%FT%TZ | tr -d :-).$$"
+  setup > /dev/null            # Hide the log (it is stored in a file, anyways)
+  local url="$(url)"
+  ( msg "Database directory is: $root"
+    msg "Reconnect with: pglite -d $root"
+    msg "Setting DATABASE_URL=$url"
+    export DATABASE_URL="$url"
+    msg "Running: ${cmd[@]}"
+    exec "${cmd[@]}" )
+}
+
 function connect {
   load_personality
   if ! is_running
@@ -132,7 +159,17 @@ function connect {
 }
 
 function url {
-  out "postgres://$role@[$(absroot)]/$role"
+  if [[ -s $root/url ]]
+  then cat "$root"/url
+  else out "postgres://$role@[$(absroot)]/$role"
+  fi
+}
+
+function admin_url {
+  if [[ -s $root/admin_url ]]
+  then cat "$root"/admin_url
+  else out "postgres://$admin@[$(absroot)]/template1"
+  fi
 }
 
 function absroot {
@@ -150,6 +187,9 @@ function init_cluster_directory {
   mkdir -p "$root"/db/conf.d
 
   base_configuration > "$root"/db/conf.d/00.pglite.conf
+  if "$tcp"
+  then enable_tcp
+  fi
 
   out "$personality" > "$root"/personality
 }
@@ -167,8 +207,8 @@ EOF
 
 function init_database_and_user {
 sql_admin -v ON_ERROR_STOP=on <<SQL
-  CREATE ROLE "$role" WITH SUPERUSER LOGIN REPLICATION;
-  CREATE DATABASE "$role" WITH OWNER "$role";
+CREATE ROLE "$role" WITH SUPERUSER LOGIN REPLICATION;
+CREATE DATABASE "$role" WITH OWNER "$role";
 SQL
 }
 
@@ -178,11 +218,11 @@ function ctl {
 }
 
 function sql {
-  "$sql" -h "$(absroot)" --dbname="user=$role dbname=$role" "$@"
+  "$sql" "$(url)" "$@"
 }
 
 function sql_admin {
-  "$sql" -h "$(absroot)" --dbname="user=$admin dbname=template1" "$@"
+  "$sql" "$(admin_url)"
 }
 
 function finalize {
@@ -210,6 +250,22 @@ function is_running {
 function clean {
   msg "Removing: $root"
   [[ ! -e "$root" ]] || rm -r "$root"
+}
+
+function enable_tcp {
+  local port=
+  port="$(random_free_tcp_port)"
+  out "postgres://$role@localhost:$port/$role" > "$root"/url
+  out "postgres://$admin@localhost:$port/template1" > "$root"/admin_url
+  tcp_configuration "$port" > "$root"/db/conf.d/01.tcp.conf
+}
+
+function tcp_configuration {
+# Use of unix_socket_directories limits this software to PG 9.3 and above.
+cat <<EOF
+listen_addresses = 'localhost'
+port = $1
+EOF
 }
 
 function random_free_tcp_port {
