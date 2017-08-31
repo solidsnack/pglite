@@ -2,18 +2,62 @@
 set -o errexit -o nounset -o pipefail
 function -h {
 cat <<USAGE
- USAGE: pglite (-p|--personality <personality>)? (-d|--directory <path>)?
-        pglite setup (-p|--personality <personality>)? (-d|--directory <path>)?
-        pglite url (-d|--directory <path>)?
-        pglite start|stop|status (-d|--directory <path>)?
-        pglite connect (-d|--directory <path>)?
-        pglite rm (-d|--directory <path>)?
+ USAGE: pglite <db-to-use>?
+               (--schema (<sql-file>|<directory>))*
+               (--conf (<file>|<var>=<val>))*
+               (--tcp)?
+               <psql-arguments>* (-- <command> <arguments>*)?
+        pglite setup <db-to-use>?
+                     (--schema (<sql-file>|<directory>))*
+                     (--conf (<file>|<var>=<val>))*
+                     (--tcp)?
+                     <initdb-arguments>*
+        pglite rm <db-to-use>
+        pglite url <db-to-use>?
+        pglite (start | stop | status) <db-to-use>? <pgctl-arguments>*
+        pglite connect <db-to-use>?
+                       <psql-arguments>* (-- <command> <arguments>*)?
+        pglite tmp ...
 
-  Creates and manages the lifecycle of a Postgres database, using the system
-  server installation.
+  Utility for managing ephemeral Postgres databases. The \`<db-to-use>\` can
+  be specified by one of several options:
 
-  This is intended to facilitate embedded applications, ephemeral database for
-  data processing applications, and testing.
+    (-d|--directory) <path>
+    -h|--home                   $home
+    -p|--project                ./$base, or nearest such directory
+                                above this one (this is the default)
+
+  When a command is passed, it is run in an environment where \`$DATABASE_URL\`
+  is set to the database connection URL. The database connection information is
+  made available through text replacement of arguments, as well:
+
+    * The string {db} is replaced with the \`postgres://...\` URL.
+
+    * The string {db.txt} is replaced with a path to a temporary file
+      containing the connection string.
+
+    * The string {jdbc.properties} is replaced with a path to a properties
+      file containing the connection parameters in JAVA properties format.
+
+  The \`pglite tmp\` subcommand is for databases that are to be used but one
+  time, as in testing. It is very similar to the main command:
+
+        pglite tmp (--schema (<sql-file>|<directory>))*
+                   (--conf (<file>|<var>=<val>))*
+                   (--tcp)?
+                   <psql-arguments>* (-- <command> <arguments>*)?
+        pglite tmp ((-r|--recent) | <token>)?
+                   <psql-arguments>* (-- <command> <arguments>*)?
+        pglite tmp ls
+        pglite tmp setup (--schema (<sql-file>|<directory>))*
+                         (--conf (<file>|<var>=<val>))*
+                         (--tcp)?
+                         <initdb-arguments>*
+        pglite tmp rm ((-a|--all) | (-r|--recent) | <token>)?
+        pglite tmp url ((-r|--recent) | <token>)
+        pglite tmp (start | stop | status) <token>? <pgctl-arguments>*
+        pglite tmp connect <token>?
+                           <psql-arguments>* (-- <command> <arguments>*)?
 
  pglite setup
 
