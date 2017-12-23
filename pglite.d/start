@@ -1,0 +1,40 @@
+#!/bin/bash
+set -o errexit -o nounset -o pipefail
+function usage {
+cat <<USAGE
+ USAGE: ...database-path.../start <pg_ctl-arguments>*
+
+  Start the database server, if not running. Any arguments are passed directly
+  to \`pg_ctl\`. For example:
+
+    -w
+
+  to wait for startup. If no arguments are passed, the default set is:
+
+    ${default_arguments[@]}
+
+USAGE
+}
+
+default_arguments=( -w )
+
+function start {
+  local status=
+  if status="$(status)"
+  then
+    if fgrep -q 'server is running' <<<"$status"
+    then
+      log 'Server is running.'
+    else
+      log 'Starting server...'
+      ctl start "${@:-${default_arguments[@]}}"
+    fi
+  else
+    # The if-else should not be needed to capture the error status here. The
+    # `errexit` option should handle it. However, it doesn't work.
+    exit $?
+  fi
+}
+
+source "$(dirname "$0")"/main
+main "$@"

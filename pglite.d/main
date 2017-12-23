@@ -1,0 +1,65 @@
+#!/bin/bash
+set -o errexit -o nounset -o pipefail
+
+export PGLITE_REPORTING_DIR="${PGLITE_REPORTING_DIR:-}"
+self=
+
+function main {
+  local args=()
+  local name="$(name)"
+
+  self="$(self)"
+  export PATH="$self":"$PATH"
+
+  case "${1:-}" in
+    -h)     usage ;;
+    --help) usage ;;
+    *)      if declare -f -- "$name" >/dev/null
+            then report "$name" "$@"
+            else err "Function name $name must be same as basename of: $0"
+            fi ;;
+  esac
+}
+
+function report {
+  local name="$1"
+
+  # Only report outermost command.
+  if [[ $PGLITE_REPORTING_DIR ]]
+  then
+    "$@"
+    return 0
+  fi
+
+  export PGLITE_REPORTING_DIR="$self"
+
+  log "$name: Starting in $self"
+
+  if ( "$@" )
+  then
+    log "$name: Complete (~${SECONDS}s) in $self"
+  else
+    local code=$?
+    log "$name: Failed (exit $code, ~${SECONDS}s) in $self"
+    exit "$code"
+  fi
+}
+
+function ctl {
+  # Note that $self is set globally, above.
+  pg_ctl -D "$self"/db -l "$self"/log "$@"
+}
+
+
+##################################################################### Utilities
+
+function out { printf '%s\n' "$*" ;}
+function msg { out "$*" >&2 ;}
+function err { local x=$? ; msg "$*" ; return $(( $x == 0 ? 1 : $x )) ;}
+function log { msg "$(date -u +%TZ)" "$*" ;}
+
+# Handles "no-match" exit code specified by POSIX for filtering tools.
+function maybe { "$@" || return $(( $? == 1 ? 0 : $? )) ;}
+
+function self {( cd "$(dirname "$0")" && pwd -P )}
+function name { basename "$0" ;}

@@ -1,0 +1,30 @@
+#!/bin/bash
+set -o errexit -o nounset -o pipefail
+function usage {
+cat <<USAGE
+ USAGE: ...database-path.../sql <psql-arguments>
+
+  Connect to the database server, starting it if necessary. Any arguments are
+  passed directly to \`psql\`.
+
+USAGE
+}
+
+function sql {
+  local url=
+
+  trap stop EXIT
+  start
+
+  if url="$(url)"
+  then
+    psql "$url" "$@" 
+  else
+    # The if-else should not be needed to capture the error status here. The
+    # `errexit` option should handle it. However, it doesn't work.
+    exit $?
+  fi
+}
+
+source "$(dirname "$0")"/main
+main "$@"

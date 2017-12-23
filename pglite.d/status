@@ -1,0 +1,17 @@
+#!/bin/bash
+set -o errexit -o nounset -o pipefail
+function usage {
+cat <<USAGE
+ USAGE: ...database-path.../status
+
+  Print the server status.
+
+USAGE
+}
+
+function status {
+  ctl status "$@"
+}
+
+source "$(dirname "$0")"/main
+main "$@"
