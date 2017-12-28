@@ -3,26 +3,27 @@ set -o errexit -o nounset -o pipefail
 function usage {
 cat <<USAGE
  USAGE: ...database-path.../sql <psql-arguments>
+        ...database-path.../sql --admin <psql-arguments>
 
   Connect to the database server, starting it if necessary. Any arguments are
   passed directly to \`psql\`.
+
+  If the first argument (and only the first argument) is \`admin\`, then the
+  connection will be made as the database administrator.
 
 USAGE
 }
 
 function sql {
-  local url=
+  trap ./stop EXIT
+  ./start
 
-  trap stop EXIT
-  start
-
-  if url="$(url)"
+  if [[ ${1:-} != --admin ]]
   then
-    psql "$url" "$@" 
+    exec psql "$(substitute {db})" "$@"
   else
-    # The if-else should not be needed to capture the error status here. The
-    # `errexit` option should handle it. However, it doesn't work.
-    exit $?
+    shift
+    exec psql "$(substitute {admin})" "$@"
   fi
 }
 

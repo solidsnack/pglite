@@ -11,7 +11,7 @@ USAGE
 }
 
 function remove {
-  stop -m immediate -w
+  ./stop -m immediate -w
   rm -rf "$self"
 }
 

@@ -1,0 +1,74 @@
+#!/bin/bash
+set -o errexit -o nounset -o pipefail
+function usage {
+cat <<USAGE
+ USAGE: ...database-path.../run <cmd> <arguments>*
+
+  Run a command with the database set up and running, shutting down the
+  database when the command completes.
+
+  The database connection information is available as a string, as path to a
+  file containing the connection to a URL, and as a path to a file containing
+  JDBC connection parameters. These values are substituted into the command
+  line using mustache-like templates:
+
+    .../run psql {db}                   # Connect to the database with \`psql\`
+    .../run psql {admin}           # Connect with \`psql\` as a privileged user
+
+  The available values are:
+
+    {db}                                             # postgres://... style URL
+    {db.txt}                                      # Path to file containing URL
+    {db.jdbc}         # Path to Java properties file with connection parameters
+    {admin}                  # postgres://... style URL for database admin user
+    {admin.txt}                             # Path to file containing admin URL
+    {admin.jdbc}                  # Path to Java properties file for admin user
+
+  The environment variables \`DATABASE_URL\` and \`DATABASE_ADMIN_URL\` are
+  available to the command once it begins execution.
+
+USAGE
+}
+
+function run {
+  trap ./stop EXIT
+  ./start
+
+  fill_in_substitutions "$@"
+}
+
+function fill_in_substitutions {
+  local filled=( ) url= admin_url=
+
+  if url="$(substitute {db})" && admin_url="$(substitute {admin})"
+  then :
+  else
+    log "Error obtaining database URL..."
+    exit $?
+  fi
+
+  for arg in "$@"
+  do
+    case "$arg" in
+      '{db}'|'{admin}'|'{'*'.txt}') filled+=( "$(substitute "$arg")" ) ;;
+      '{'*'.jdbc}')                 filled+=( "$(jdbc_check "$arg")" ) ;;
+      *)                            filled+=( "$arg" ) ;;
+    esac
+  done
+
+  set -- "${filled[@]:+${filled[@]}}"
+  log "Running: $(printf ' %q' "$@")"
+  ( export DATABASE_URL="$url" DATABASE_ADMIN_URL="$admin_url"
+    exec "$@" )
+}
+
+function jdbc_check {
+  local path="$(substitute "$1")"
+  if [[ ! -s "$path" ]]
+  then err 'JDBC does not support UDP-only databases.'
+  fi
+  out "$path"
+}
+
+source "$(dirname "$0")"/main
+main "$@"

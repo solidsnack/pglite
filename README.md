@@ -87,3 +87,13 @@ PGLite does some things that seem odd at first.
   but only once, at database setup time).
 
 
+# The `info` Directory
+
+There are two types of data stored in the `info` directory: settings and
+ephemeral state.
+
+```
+.../info/                                          -- Metadata used by `pglite`
+         etc/                                             -- Permanent settings
+         var/                                -- Temporary, stateful information
+```

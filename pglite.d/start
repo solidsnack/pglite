@@ -19,19 +19,37 @@ USAGE
 default_arguments=( -w )
 
 function start {
-  local status=
-  if status="$(status)"
+  if ./status --is-running
   then
-    if fgrep -q 'server is running' <<<"$status"
-    then
-      log 'Server is running.'
-    else
-      log 'Starting server...'
-      ctl start "${@:-${default_arguments[@]}}"
-    fi
+    log 'Server is running.'
   else
-    # The if-else should not be needed to capture the error status here. The
-    # `errexit` option should handle it. However, it doesn't work.
+    log 'Starting server...'
+    rm -rf "$tmp"
+    mkdir -p "$tmp"
+    handle_var
+    ctl start "${@:-${default_arguments[@]}}"
+  fi
+}
+
+function handle_var {
+  rm -rf "$self"/info/var/*
+  maybe_assign_port
+}
+
+function maybe_assign_port {
+  local port=
+
+  serves_on_random_tcp_port || return 0
+
+  if port="$(random_free_tcp_port)"
+  then
+    out "$port" > info/var/pg/port
+    setup port="$port"
+    for f in url/admin url/client
+    do
+      sed "s|localhost:0/|localhost:$port/|" < info/etc/"$f" > info/var/"$f"
+    done
+  else
     exit $?
   fi
 }

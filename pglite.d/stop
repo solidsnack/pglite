@@ -19,20 +19,15 @@ USAGE
 default_arguments=( -w -m fast )
 
 function stop {
-  local status=
-  if status="$(status)"
+  local code=0
+
+  if ./status --is-running
   then
-    if fgrep -q 'server is running' <<<"$status"
-    then
-      log 'Shutting down server...'
-      ctl stop "${@:-${default_arguments[@]}}"
-    else
-      log 'Server not running.'
-    fi
+    log 'Shutting down server...'
+    rm -rf "$tmp" "$self"/info/var/*
+    ctl stop "${@:-${default_arguments[@]}}"
   else
-    # The if-else should not be needed to capture the error status here. The
-    # `errexit` option should handle it. However, it doesn't work.
-    exit $?
+    log 'Server not running.'
   fi
 }
 

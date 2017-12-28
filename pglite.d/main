@@ -1,28 +1,37 @@
 #!/bin/bash
 set -o errexit -o nounset -o pipefail
 
+# Permanent settings.
+declare program=pglite role=db
+
+# Updated once for each run.
+declare self= tmp=
+
 export PGLITE_REPORTING_DIR="${PGLITE_REPORTING_DIR:-}"
-self=
 
 function main {
   local args=()
   local name="$(name)"
 
   self="$(self)"
+  tmp="$(tmp)"
   export PATH="$self":"$PATH"
 
   case "${1:-}" in
     -h)     usage ;;
     --help) usage ;;
     *)      if declare -f -- "$name" >/dev/null
-            then report "$name" "$@"
+            then dispatch "$name" "$@"
             else err "Function name $name must be same as basename of: $0"
             fi ;;
   esac
 }
 
-function report {
+function dispatch {
   local name="$1"
+
+  # Always run command in "$self".
+  cd "$self"
 
   # Only report outermost command.
   if [[ $PGLITE_REPORTING_DIR ]]
@@ -33,14 +42,11 @@ function report {
 
   export PGLITE_REPORTING_DIR="$self"
 
-  log "$name: Starting in $self"
-
   if ( "$@" )
-  then
-    log "$name: Complete (~${SECONDS}s) in $self"
+  then :
   else
     local code=$?
-    log "$name: Failed (exit $code, ~${SECONDS}s) in $self"
+    log "$name: Failed (exit $code, ~${SECONDS}s) in: $self"
     exit "$code"
   fi
 }
@@ -50,6 +56,75 @@ function ctl {
   pg_ctl -D "$self"/db -l "$self"/log "$@"
 }
 
+function info {
+  get info/"$1"
+}
+
+function get {
+  # Note that $self is set globally, above.
+  local f="$self"/"$1"
+  [[ -f $f ]] || return 1
+  cat "$f"
+}
+
+declare url= txt= jdbc=
+declare admin_url= admin_txt= admin_jdbc=
+
+function substitute {
+  local var="$self/info/var"
+
+  case "$1" in
+    '{db}')         out "${url:=$(info var/url/user)}" ;;
+    '{db.txt}')     out "${txt:=$var/url/user}" ;;
+    '{db.jdbc}')    out "${jdbc:=$var/jdbc/user}" ;;
+    '{admin}')      out "${url:=$(info var/url/admin)}" ;;
+    '{admin.txt}')  out "${txt:=$var/url/admin}" ;;
+    '{admin.jdbc}') out "${jdbc:=$var/jdbc/admin}" ;;
+    *)              err "Unknown pattern: $1" ;;
+  esac
+}
+
+function random_free_tcp_port {
+  local port=16384 spacing=16
+  local taken_ports=( $( netstat -aln | egrep ^tcp | fgrep LISTEN |
+                         awk '{print $4}' | egrep -o '[0-9]+$' |
+                         sort -n | uniq ) )
+
+  port=$(( port + (RANDOM % spacing) ))
+
+  for taken in "${taken_ports[@]}"
+  do
+    [[ $port -lt $((taken + spacing)) ]] || continue
+    port=$(( taken + spacing + (RANDOM % spacing) ))
+  done
+
+  if [[ $port -ge 65535 ]]
+  then err 'Could not find free port far enough away from others.'
+  fi
+
+  out "$port"
+}
+
+function token {
+  if which uuidgen &>/dev/null
+  then                                     # Generate true UUIDs where possible
+    uuidgen | tr A-Z a-z
+  else           # When there is no `uuidgen`, just get something pretty random
+    printf '%04x%04x%04x%04x\n' $RANDOM $RANDOM $RANDOM $RANDOM
+  fi
+}
+
+function t {
+  date -u +%FT%TZ                                           # UTC date and time
+}
+
+function serves_on_random_tcp_port {
+  [[ $(maybe get info/etc/tcp) -eq 0 ]]
+}
+
+function tmp {
+  out "/tmp/.$program.$(info token)"           # TODO: Query for system tmp dir
+}
 
 ##################################################################### Utilities
 

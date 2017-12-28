@@ -2,15 +2,35 @@
 set -o errexit -o nounset -o pipefail
 function usage {
 cat <<USAGE
- USAGE: ...database-path.../status
+ USAGE: ...database-path.../status (--is-running)?
 
-  Print the server status.
+  Print the server status. With \`--is-running\`, prints nothing and exits 0 if
+  the server is running or 1 if it is not.
 
 USAGE
 }
 
 function status {
-  ctl status "$@"
+  case "${1:-}" in
+    --is-running) running ;;
+    '')           ctl status "$@" ;;
+    *)            err "Invalid argument: $1" ;;
+  esac
+}
+
+function running {
+  local status=
+  if status="$(status)"
+  then
+    if ! fgrep -q 'server is running' <<<"$status"
+    then
+      return 1
+    fi
+  else
+    # The if-else should not be needed to capture the error status here. The
+    # `errexit` option should handle it. However, it doesn't work.
+    return $?
+  fi
 }
 
 source "$(dirname "$0")"/main

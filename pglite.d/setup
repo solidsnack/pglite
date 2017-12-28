@@ -1,0 +1,107 @@
+#!/bin/bash
+set -o errexit -o nounset -o pipefail
+function usage {
+cat <<USAGE
+ USAGE: ...database-path.../setup set <param>=<value> <param>=<value> ...
+        ...database-path.../setup get <parameter>
+        ...database-path.../setup del <parameter> <parameter> ...
+
+  Sets up an embedded database instance, and allows modification of
+  \`postgresql.conf\` configuration parameters for an existing one.
+
+USAGE
+}
+
+function setup {
+  case "$1" in
+    set) shift ; //set "$@" ;;
+    get) shift ; //get "$@" ;;
+    del) shift ; //del "$@" ;;
+    --initialize) shift ; initialize "$@" ;;
+  esac
+}
+
+function initialize {
+  initdb -D "$self"/db -A trust --nosync --locale en_US.UTF-8 "$@"
+  setup_confd
+  //set "$@"
+}
+
+function setup_confd {
+  # All other configurations are handled by putting them in conf.d, so the main
+  # DB conf file retains the default settings. Use of include_dir limits this
+  # software to PG 9.3 and above.
+  if ! egrep -q "^include_dir = 'conf.d'" "$self"/db/"$conf"
+  then out "include_dir = 'conf.d'" >> "$self"/db/"$conf"
+  fi
+}
+
+function //set {
+  for arg in "$@"
+  do
+    case "$arg" in
+      *=*) out ... > info/etc/pg/... ;;
+      *)   err 'Please pass arguments of the form a=b.' ;;
+    esac
+  done
+}
+
+function //get {
+  get info/etc/pg/"$1"
+}
+
+function //del {
+  rm info/etc/pg/"$1"
+}
+
+function apply_configuration {
+
+}
+
+function finalize {
+  local code=$?
+  ./stop -m fast 2>/dev/null || true
+  kill %1 2>/dev/null || true
+  exit $code
+}
+
+function initialize {
+  trap finalize EXIT
+
+  initdb -D "$self"/db -A trust --nosync --locale en_US.UTF-8 # "$@"
+  setup_confd
+  //set "$@"
+
+  touch "$self"/log
+  tail -qF "$self"/log &
+  ./start
+  init_database_and_user
+
+  kill %1
+  wait %1 2>/dev/null || true
+}
+
+function tcp_configuration {
+  //set listen_addresses=localhost port="$1"
+}
+
+function //base_configuration {
+# Use of unix_socket_directories limits this software to PG 9.3 and above.
+cat <<EOF
+unix_socket_directories = '"$(//absroot)"'
+listen_addresses = ''
+datestyle = 'iso, ymd'
+intervalstyle = 'iso_8601'
+timezone = 'UTC'
+EOF
+}
+
+function init_database_and_user {
+./sql --admin -v ON_ERROR_STOP=on <<SQL
+CREATE ROLE "$role" WITH SUPERUSER LOGIN REPLICATION;
+CREATE DATABASE "$role" WITH OWNER "$role";
+SQL
+}
+
+source "$(dirname "$0")"/main
+main "$@"

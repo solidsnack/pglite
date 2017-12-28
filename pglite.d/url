@@ -1,0 +1,45 @@
+#!/bin/bash
+set -o errexit -o nounset -o pipefail
+function usage {
+cat <<USAGE
+ USAGE: ...database-path.../url (--admin)?
+
+  Obtain the connection string for the database. With \`--admin\`, obtain the
+  admin connection string.
+
+  If the database has been configured to assign a port randomly on startup,
+  then this utility can not be called until after the database server has
+  started.
+
+USAGE
+}
+
+function url {
+  case "${1:-}" in
+    --admin)   lookup admin ;;
+    --user|'') lookup user ;;
+    *)         err "Invalid argument: $1" ;;
+  esac
+}
+
+function lookup {
+  if serves_on_random_tcp_port
+  then
+    needs_to_be_started
+    info var/url/"$1"
+  else
+    info etc/url/"$1"
+  fi
+}
+
+function needs_to_be_started {
+  if ! ./status --is-running
+  then
+    log 'Server must be running to discover randomly assigned port.'
+    log 'Please run `.../start` and then run `.../url`.'
+    return 2
+  fi
+}
+
+source "$(dirname "$0")"/main
+main "$@"
