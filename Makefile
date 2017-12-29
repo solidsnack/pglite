@@ -1,11 +1,15 @@
-test:
-	@rm -rf tmp
-	@mkdir -p tmp
-	cd tmp/ && ../pglite setup
-	cd tmp/ && ../pglite connect -v ON_ERROR_STOP=on -c 'SELECT TRUE'
-	cd tmp/ && ../pglite clean
-	@rm -rf tmp
+tests := $(wildcard test/??-*)
 
-install:
-	cp -a pglite /usr/local/bin/
+.PHONY: test
+test: test-setup $(tests:test/%=test//run//%)
+
+.PHONY: test-setup
+test-setup:
+	@rm -rf tmp/test/
+	mkdir -p tmp/test/
+
+test//run//%: test/%
+	@echo --- starting: $^ >&2
+	$^ 2>&1 > tmp/$^
+	@echo --- succeeded: $^ >&2
 
