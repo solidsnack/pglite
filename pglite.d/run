@@ -4,8 +4,9 @@ function usage {
 cat <<USAGE
  USAGE: ...database-path.../run <cmd> <arguments>*
 
-  Run a command with the database set up and running, shutting down the
-  database when the command completes.
+  Run a command with the database connection string, starting it if necessary.
+  If this task is the only connection, the database server will shutdown when
+  it completes.
 
   The database connection information is available as a string, as path to a
   file containing the connection to a URL, and as a path to a file containing
@@ -31,7 +32,7 @@ USAGE
 }
 
 function run {
-  trap ./stop EXIT
+  trap finalize EXIT
   ./start
 
   fill_in_substitutions "$@"
@@ -68,6 +69,12 @@ function jdbc_check {
   then err 'JDBC does not support UDP-only databases.'
   fi
   out "$path"
+}
+
+function finalize {
+  local code=$?
+  ./stop -W -m smart || true
+  exit $code
 }
 
 source "$(dirname "$0")"/main
