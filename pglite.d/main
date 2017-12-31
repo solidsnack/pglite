@@ -109,7 +109,7 @@ function token {
   if which uuidgen &>/dev/null
   then                                     # Generate true UUIDs where possible
     uuidgen | tr A-Z a-z
-  else           # When there is no `uuidgen`, just get something pretty random
+  else                  # When there is no `uuidgen`, just get something random
     printf '%04x%04x%04x%04x\n' $RANDOM $RANDOM $RANDOM $RANDOM
   fi
 }
@@ -123,7 +123,7 @@ function serves_on_random_tcp_port {
 }
 
 function tmp {
-  out "/tmp/.$program.$(info token)"           # TODO: Query for system tmp dir
+  out "/tmp/.$program.$(get info/token)"       # TODO: Query for system tmp dir
 }
 
 ##################################################################### Utilities
