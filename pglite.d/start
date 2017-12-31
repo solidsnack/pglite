@@ -27,8 +27,25 @@ function start {
     rm -rf "$tmp"
     mkdir -p "$tmp"
     handle_var
+    apply_configuration
     ctl start "${@:-${default_arguments[@]}}"
   fi
+}
+
+function apply_configuration {
+  for f in info/etc/pg/*
+  do
+    [[ -f $f ]]
+    local var="${f##*/}"
+    out "$var = $(< "$f")"
+  done > "$self"/db/conf.d/000-base-settings.conf
+
+  for f in info/var/pg/*
+  do
+    [[ -f $f ]]
+    local var="${f##*/}"
+    out "$var = $(< "$f")"
+  done > "$self"/db/conf.d/000-dynamic-settings.conf
 }
 
 function handle_var {
@@ -44,9 +61,11 @@ function maybe_assign_port {
   if port="$(random_free_tcp_port)"
   then
     out "$port" > info/var/pg/port
+    out 'localhost' > info/var/pg/listen_addresses
     setup port="$port"
-    for f in url/admin url/client
+    for f in url/admin url/client jdbc/admin jdbc/client
     do
+      [[ -s info/etc/$f ]] || continue
       sed "s|localhost:0/|localhost:$port/|" < info/etc/"$f" > info/var/"$f"
     done
   else
