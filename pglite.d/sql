@@ -2,29 +2,51 @@
 set -o errexit -o nounset -o pipefail
 function usage {
 cat <<USAGE
- USAGE: ...database-path.../sql <psql-arguments>
-        ...database-path.../sql --admin <psql-arguments>
+ USAGE: ...database-path.../sql (--errexit)? <psql-arguments>
+        ...database-path.../sql (--errexit)? --admin <psql-arguments>
 
   Connect to the database server, starting it if necessary. Any arguments are
   passed directly to \`psql\`.
 
-  If the first argument (and only the first argument) is \`admin\`, then the
-  connection will be made as the database administrator.
+  If \`--admin\` is passed, connects to the database with a higher privilege
+  level.
+
+  If `\--errexit\` is passed, it is equivalent to setting \`ON_ERROR_STOP\`:
+  the first SQL error will cause the SQL interpreter to exit with an error,
+  instead of continuing on with the other (likely failing) commands.
+
+  If this task is the only connection, the database server will shutdown when
+  it completes.
 
 USAGE
 }
 
+errexit=( -v ON_ERROR_STOP=on )
+
 function sql {
-  trap ./stop EXIT
+  local conninfo='{db}' options=( )
+
+  trap finalize EXIT
   ./start
 
-  if [[ ${1:-} != --admin ]]
-  then
-    exec psql "$(substitute {db})" "$@"
-  else
-    shift
-    exec psql "$(substitute {admin})" "$@"
-  fi
+  while [[ $# -gt 0 ]]
+  do
+    case "$1" in
+      --admin)   conninfo='{admin}' ; shift ;;
+      --errexit) options+=( "${errexit[@]}" ) ; shift ;;
+      *)         break ;;
+    esac
+  done
+
+  options+=( "$(substitute "$conninfo")" )
+
+  exec psql "${options[@]}" "$@"
+}
+
+function finalize {
+  local code=$?
+  ./stop -W -m smart || true
+  exit $code
 }
 
 source "$(dirname "$0")"/main
