@@ -13,6 +13,10 @@ cat <<USAGE
 
     ${default_arguments[@]}
 
+  Postgres supports a "smart" shutdown method, with \`-m smart\`, that causes
+  the server to stop only after all clients have disconnected. This can be
+  useful.
+
 USAGE
 }
 
