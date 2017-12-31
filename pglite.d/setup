@@ -2,78 +2,42 @@
 set -o errexit -o nounset -o pipefail
 function usage {
 cat <<USAGE
- USAGE: ...database-path.../setup set <param>=<value> <param>=<value> ...
-        ...database-path.../setup get <parameter>
-        ...database-path.../setup del <parameter> <parameter> ...
+ USAGE: ...database-path.../setup <initd-arguments>*
+        ...database-path.../setup --reflow <initd-arguments>*
 
-  Sets up an embedded database instance, and allows modification of
-  \`postgresql.conf\` configuration parameters for an existing one.
+  Sets up an embedded database instance. If the database instance has been set
+  up already, skips setup (but does not signal an error).
+
+  To set up the database afresh even if it has been set up already, pass the
+  \`--reflow\` option. This will initialize the database or delete and
+  reinitialize it, as appropriate.
 
 USAGE
 }
 
 function setup {
-  case "$1" in
-    set) shift ; //set "$@" ;;
-    get) shift ; //get "$@" ;;
-    del) shift ; //del "$@" ;;
-    --initialize) shift ; initialize "$@" ;;
-  esac
-}
-
-function initialize {
-  initdb -D "$self"/db -A trust --nosync --locale en_US.UTF-8 "$@"
-  setup_confd
-  //set "$@"
-}
-
-function setup_confd {
-  # All other configurations are handled by putting them in conf.d, so the main
-  # DB conf file retains the default settings. Use of include_dir limits this
-  # software to PG 9.3 and above.
-  if ! egrep -q "^include_dir = 'conf.d'" "$self"/db/"$conf"
-  then out "include_dir = 'conf.d'" >> "$self"/db/"$conf"
+  if [[ -d $self/db && ${1:-} != --reflow ]]
+  then
+    log "Doing nothing because database directory exists: $self/db"
+    exit 0
   fi
-}
 
-function //set {
-  for arg in "$@"
-  do
-    case "$arg" in
-      *=*) out ... > info/etc/pg/... ;;
-      *)   err 'Please pass arguments of the form a=b.' ;;
-    esac
-  done
-}
-
-function //get {
-  get info/etc/pg/"$1"
-}
-
-function //del {
-  rm info/etc/pg/"$1"
-}
-
-function apply_configuration {
-
-}
-
-function finalize {
-  local code=$?
-  ./stop -m fast 2>/dev/null || true
-  kill %1 2>/dev/null || true
-  exit $code
+  initialize
 }
 
 function initialize {
   trap finalize EXIT
 
-  initdb -D "$self"/db -A trust --nosync --locale en_US.UTF-8 # "$@"
-  setup_confd
-  //set "$@"
+  [[ ! -s "$self"/info/token ]] || token > "$self"/info/token
+  [[ ! -s "$self"/info/t ]]     || t     > "$self"/info/t
 
+  initdb -D "$self"/db -A trust --nosync --locale en_US.UTF-8 "$@"
+  setup_confd
+
+  # Touch the file so that we can tail it, before any logger has run.
   touch "$self"/log
   tail -qF "$self"/log &
+
   ./start
   init_database_and_user
 
@@ -81,23 +45,36 @@ function initialize {
   wait %1 2>/dev/null || true
 }
 
-function tcp_configuration {
-  //set listen_addresses=localhost port="$1"
+function setup_confd {
+  local conf="$self"/db/postgresql.conf
+
+  mkdir -p "$self"/db/conf.d
+
+  # Additional configurations are handled by putting them in conf.d, so that
+  # the main DB conf file can retain the default settings. Use of include_dir
+  # limits this software to PG 9.3 and above.
+  if egrep -q "^include_dir = 'conf[.]d'" "$conf"
+  then :
+  else
+    local code=$?
+    if [[ $code -eq 1 ]]                      # Indicates "no match", per POSIX
+    then
+      out "include_dir = 'conf.d'" >> "$conf"
+    else
+      return $code
+    fi
+  fi
 }
 
-function //base_configuration {
-# Use of unix_socket_directories limits this software to PG 9.3 and above.
-cat <<EOF
-unix_socket_directories = '"$(//absroot)"'
-listen_addresses = ''
-datestyle = 'iso, ymd'
-intervalstyle = 'iso_8601'
-timezone = 'UTC'
-EOF
+function finalize {
+  local code=$?
+  ./stop -m fast -w 2>/dev/null || true
+  kill %1 2>/dev/null || true
+  exit $code
 }
 
 function init_database_and_user {
-./sql --admin -v ON_ERROR_STOP=on <<SQL
+./sql --admin --errexit <<SQL
 CREATE ROLE "$role" WITH SUPERUSER LOGIN REPLICATION;
 CREATE DATABASE "$role" WITH OWNER "$role";
 SQL
