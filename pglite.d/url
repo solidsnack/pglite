@@ -26,9 +26,9 @@ function lookup {
   if serves_on_random_tcp_port
   then
     needs_to_be_started
-    info var/url/"$1"
+    get info/var/url/"$1"
   else
-    info etc/url/"$1"
+    get info/etc/url/"$1"
   fi
 }
 

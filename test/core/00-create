@@ -1,0 +1,8 @@
+#!/bin/bash
+set -o errexit -o nounset -o pipefail
+
+./setup
+
+n="$RANDOM"
+data="$(./sql -XqAt -c "SELECT $n")"
+[[ $n -eq $data ]]

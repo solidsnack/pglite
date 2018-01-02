@@ -16,7 +16,7 @@ cat <<USAGE
 USAGE
 }
 
-default_arguments=( -w )
+default_arguments=( -w --silent )
 
 function start {
   if ./status --is-running
@@ -24,33 +24,87 @@ function start {
     log 'Server is running.'
   else
     log 'Starting server...'
-    rm -rf "$tmp"
-    mkdir -p "$tmp"
     handle_var
+    handle_tmp
+    set_default_settings
+    maybe_assign_port
     apply_configuration
-    ctl start "${@:-${default_arguments[@]}}"
+    generate_urls
+    ctl start "${@:-${default_arguments[@]}}" >&2
   fi
 }
 
 function apply_configuration {
-  for f in info/etc/pg/*
-  do
-    [[ -f $f ]]
-    local var="${f##*/}"
-    out "$var = $(< "$f")"
-  done > "$self"/db/conf.d/000-base-settings.conf
-
   for f in info/var/pg/*
   do
-    [[ -f $f ]]
+    [[ -f $f ]] || continue
     local var="${f##*/}"
     out "$var = $(< "$f")"
   done > "$self"/db/conf.d/000-dynamic-settings.conf
+
+  # User settings take precedence. Users can break their database by
+  # fiddling with things like `unix_socket_directories`.
+  for f in info/etc/pg/*
+  do
+    [[ -f $f ]] || continue
+    local var="${f##*/}"
+    out "$var = $(< "$f")"
+  done > "$self"/db/conf.d/001-configured-settings.conf
+}
+
+function generate_urls {
+  local port= unix= user= admin=
+
+  if port="$(get info/etc/pg/port)"
+  then
+    mkdir -p info/etc/url info/var/url
+    user="postgres://$role@localhost:$port/$role"
+    admin="postgres://postgres@localhost:$port/template1"
+    out "$user" > info/etc/url/user
+    out "$admin" > info/etc/url/admin
+    out "$user" > info/var/url/user
+    out "$admin" > info/var/url/admin
+    return 0
+  fi
+
+  if port="$(get info/var/pg/port)"
+  then
+    mkdir -p info/var/url
+    user="postgres://$role@localhost:$port/$role"
+    admin="postgres://postgres@localhost:$port/template1"
+    out "$user" > info/var/url/user
+    out "$admin" > info/var/url/admin
+    return 0
+  fi
+
+  mkdir -p info/etc/url info/var/url
+  unix="$(get info/var/pg/unix_socket_directories)"
+  user="postgres://$role@[$unix]/$role"
+  admin="postgres://postgres@[$unix]/template1"
+  out "$user" > info/etc/url/user
+  out "$admin" > info/etc/url/admin
+  out "$user" > info/var/url/user
+  out "$admin" > info/var/url/admin
+}
+
+function set_default_settings {
+  # Listen only on UNIX sockets by default.
+  out "''"         > info/var/pg/listen_addresses
+  # Use ISO-8601 and UTC by default, in a nod to standardization.
+  out "'iso, ymd'" > info/var/pg/datestyle
+  out "iso_8601"   > info/var/pg/intervalstyle
+  out "UTC"        > info/var/pg/timezone
+}
+
+function handle_tmp {
+  rm -rf "$tmp"
+  mkdir -p "$tmp"
+  out "'$tmp'" > info/var/pg/unix_socket_directories
 }
 
 function handle_var {
-  rm -rf "$self"/info/var/*
-  maybe_assign_port
+  rm -rf info/var/*
+  mkdir -p info/var/pg
 }
 
 function maybe_assign_port {
@@ -62,7 +116,6 @@ function maybe_assign_port {
   then
     out "$port" > info/var/pg/port
     out 'localhost' > info/var/pg/listen_addresses
-    setup port="$port"
     for f in url/admin url/client jdbc/admin jdbc/client
     do
       [[ -s info/etc/$f ]] || continue
@@ -73,5 +126,5 @@ function maybe_assign_port {
   fi
 }
 
-source "$(dirname "$0")"/main
+source "$(dirname "${BASH_SOURCE[0]}")"/main
 main "$@"

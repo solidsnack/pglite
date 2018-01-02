@@ -15,5 +15,5 @@ function remove {
   rm -rf "$self"
 }
 
-source "$(dirname "$0")"/main
+source "$(dirname "${BASH_SOURCE[0]}")"/main
 main "$@"

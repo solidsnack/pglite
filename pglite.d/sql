@@ -11,7 +11,7 @@ cat <<USAGE
   If \`--admin\` is passed, connects to the database with a higher privilege
   level.
 
-  If `\--errexit\` is passed, it is equivalent to setting \`ON_ERROR_STOP\`:
+  If \`--errexit\` is passed, it is equivalent to setting \`ON_ERROR_STOP\`:
   the first SQL error will cause the SQL interpreter to exit with an error,
   instead of continuing on with the other (likely failing) commands.
 
@@ -24,7 +24,7 @@ USAGE
 errexit=( -v ON_ERROR_STOP=on )
 
 function sql {
-  local conninfo='{db}' options=( )
+  local url= admin=false psql_args=( )
 
   trap finalize EXIT
   ./start
@@ -32,15 +32,20 @@ function sql {
   while [[ $# -gt 0 ]]
   do
     case "$1" in
-      --admin)   conninfo='{admin}' ; shift ;;
-      --errexit) options+=( "${errexit[@]}" ) ; shift ;;
+      --admin)   admin=true ; shift ;;
+      --errexit) psql_args+=( "${errexit[@]}" ) ; shift ;;
       *)         break ;;
     esac
   done
 
-  options+=( "$(substitute "$conninfo")" )
+  if "$admin"
+  then url="$(./url --admin)"
+  else url="$(./url)"
+  fi
 
-  exec psql "${options[@]}" "$@"
+  psql_args+=( "$@" )
+
+  ( exec psql "$url" "${psql_args[@]:+${psql_args[@]}}" )
 }
 
 function finalize {
@@ -49,5 +54,5 @@ function finalize {
   exit $code
 }
 
-source "$(dirname "$0")"/main
+source "$(dirname "${BASH_SOURCE[0]}")"/main
 main "$@"

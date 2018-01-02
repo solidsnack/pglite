@@ -32,6 +32,7 @@ The database provides the following commands, once initialized:
 * `start` -- To start the server.
 * `stop` -- To stop the server.
 * `status` -- To determine whether the server is started or stopped.
+* `settings` -- To change `postgres.conf` settings.
 * `run` -- To run a command that connects to the database.
 * `sql` -- To obtain a SQL prompt, or run a SQL script.
 
@@ -61,6 +62,7 @@ commmands:
     run                          -- Run a command that connects to the database
     sql   -- Connect to the database with `psql`, starting the server if needed
     setup                       -- Change settings or reinitialize the database
+    settings          -- Set Postgres settinngs and add schema and seed scripts
     start                                          -- Start the database server
     stop                                            -- Stop the database server
     status                     -- Status (running? stopped?) of database server

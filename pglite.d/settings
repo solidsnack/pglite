@@ -1,0 +1,51 @@
+#!/bin/bash
+set -o errexit -o nounset -o pipefail
+function usage {
+cat <<USAGE
+ USAGE: ...database-path.../settings (<param>=<value>|<param>!)+
+                                     (--tcp|--unix)?
+
+  Utility for managing \`postgresql.conf\` parameters.
+
+  With \`<param>=<value>\`, stores the value for a parameter. With
+  \`<param>!\`, clears the stored value for a parameter, allowing it to take on
+  its default value.
+
+  When \`--tcp\` is passed, it enables a feature unique to this program: every
+  time the database server is started, it will listen on a randomly selected
+  free port on localhost. Without this option, or if \`--unix\` comes after it,
+  the server only listens on a UNIX socket unless the appropriate
+  \`postgresql.conf\` settings are set directly.
+
+USAGE
+}
+
+function settings {
+  set_conf_parameters "$@"
+}
+
+function set_conf_parameters {
+  mkidr -p info/etc/pg
+
+  for arg in "$@"
+  do
+    case "$arg" in
+      *=*) local var="${arg%%=*}" val="${arg#*=}"
+           out "$var" > info/etc/pg/"$val" ;;
+      *!)  local var="${arg%\!}"
+           rm -f info/etc/pg/"$val" ;;
+      *)   err 'Please pass arguments of the form `var=val` or `var!`.' ;;
+    esac
+  done
+}
+
+function disable_tcp {
+  rm -f info/etc/tcp
+}
+
+function ensure_tcp {
+  out 0 > info/etc/tcp
+}
+
+source "$(dirname "${BASH_SOURCE[0]}")"/main
+main "$@"

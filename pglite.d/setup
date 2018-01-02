@@ -28,10 +28,16 @@ function setup {
 function initialize {
   trap finalize EXIT
 
-  [[ ! -s "$self"/info/token ]] || token > "$self"/info/token
-  [[ ! -s "$self"/info/t ]]     || t     > "$self"/info/t
+  mkdir -p info
+  [[ -s info/token ]] || token > info/token
+  [[ -s info/t ]]     || t     > info/t
 
-  initdb -D "$self"/db -A trust --nosync --locale en_US.UTF-8 "$@"
+  local initdb_options=( --auth trust
+                         --username postgres
+                         --nosync
+                         --locale en_US.UTF-8 )
+  initdb -D "$self"/db "${initdb_options[@]}" "$@"
+
   setup_confd
 
   # Touch the file so that we can tail it, before any logger has run.
@@ -80,5 +86,5 @@ CREATE DATABASE "$role" WITH OWNER "$role";
 SQL
 }
 
-source "$(dirname "$0")"/main
+source "$(dirname "${BASH_SOURCE[0]}")"/main
 main "$@"

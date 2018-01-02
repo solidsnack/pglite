@@ -63,10 +63,27 @@ function fill_in_substitutions {
     exec "$@" )
 }
 
+declare url= txt= jdbc=
+declare admin_url= admin_txt= admin_jdbc=
+
+function substitute {
+  local var="$self/info/var"
+
+  case "$1" in
+    '{db}')         out "${url:=$(get info/var/url/user)}" ;;
+    '{db.txt}')     out "${txt:=$var/url/user}" ;;
+    '{db.jdbc}')    out "${jdbc:=$var/jdbc/user}" ;;
+    '{admin}')      out "${url:=$(get info/var/url/admin)}" ;;
+    '{admin.txt}')  out "${txt:=$var/url/admin}" ;;
+    '{admin.jdbc}') out "${jdbc:=$var/jdbc/admin}" ;;
+    *)              err "Unknown pattern: $1" ;;
+  esac
+}
+
 function jdbc_check {
   local path="$(substitute "$1")"
   if [[ ! -s "$path" ]]
-  then err 'JDBC does not support UDP-only databases.'
+  then err 'JDBC does requires TCP connectivity.'
   fi
   out "$path"
 }
@@ -77,5 +94,5 @@ function finalize {
   exit $code
 }
 
-source "$(dirname "$0")"/main
+source "$(dirname "${BASH_SOURCE[0]}")"/main
 main "$@"
