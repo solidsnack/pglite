@@ -1,1 +1,9 @@
-false
+#!/bin/bash
+set -o errexit -o nounset -o pipefail
+
+./setup
+
+trap ./stop EXIT
+
+./start
+./status --is-running
