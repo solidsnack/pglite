@@ -1,1 +1,15 @@
-false
+#!/bin/bash
+set -o errexit -o nounset -o pipefail
+
+function query {
+  ./run psql -XqAt -c "SELECT $1"
+}
+
+./setup
+
+n="$RANDOM"
+data="$(query "$n")"
+
+set -x
+[[ $n -eq $data ]]
+set +x
