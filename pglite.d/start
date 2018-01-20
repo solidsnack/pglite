@@ -78,7 +78,7 @@ function generate_urls {
   fi
 
   mkdir -p info/etc/url info/var/url
-  unix="$(get info/var/pg/unix_socket_directories)"
+  unix="$tmp"
   user="postgres://$role@[$unix]/$role"
   admin="postgres://postgres@[$unix]/template1"
   out "$user" > info/etc/url/user

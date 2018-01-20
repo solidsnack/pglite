@@ -82,7 +82,8 @@ function t {
 }
 
 function serves_on_random_tcp_port {
-  [[ $(maybe get info/etc/tcp) -eq 0 ]]
+  local port="$(maybe get info/etc/tcp)"
+  [[ $port && $port -eq 0 ]]
 }
 
 function tmp {
