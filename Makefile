@@ -10,12 +10,12 @@ test-setup:
 	mkdir -p tmp/test/ tmp/log/
 
 .PHONY: $(test_core_targets)
-$(test_core_targets): tmp/test/core/%: test/core/%
-	@echo --- starting: $^ >&2
-	@mkdir -p tmp/$^ tmp/log/$^
-	@cp -a pglite.d/ tmp/$^
-	@echo --- in: tmp/$^ >&2
-	@echo --- log: tmp/log/$^/stdio.log >&2
-	@( cd tmp/$^ && $(realpath $^) 2>&1 ) > tmp/log/$^/stdio.log
-	@echo +++ succeeded: $^ >&2
+$(test_core_targets): tmp/test/core/%: test/core/% test-setup
+	@echo --- starting: $< >&2
+	@mkdir -p tmp/$< tmp/log/$<
+	@cp -a pglite.d/ tmp/$<
+	@echo --- in: tmp/$< >&2
+	@echo --- log: tmp/log/$</stdio.log >&2
+	@( cd tmp/$< && $(realpath $<) 2>&1 ) > tmp/log/$</stdio.log
+	@echo +++ succeeded: $< >&2
 
