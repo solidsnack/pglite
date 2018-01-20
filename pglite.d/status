@@ -19,18 +19,7 @@ function status {
 }
 
 function running {
-  local status=
-  if status="$(status)"
-  then
-    if ! fgrep -q 'server is running' <<<"$status"
-    then
-      return 1
-    fi
-  else
-    # The if-else should not be needed to capture the error status here. The
-    # `errexit` option should handle it. However, it doesn't work.
-    return $?
-  fi
+  status | fgrep -q 'server is running'
 }
 
 source "$(dirname "${BASH_SOURCE[0]}")"/main
