@@ -27,7 +27,7 @@ Schema files can be passed, as well:
 pglite path/to/database --schema tables.sql
 ```
 
-The database provides the following commands, once initialized:
+Under `path/to/database`, you'll find several commands, including:
 
 * `start` -- To start the server.
 * `stop` -- To stop the server.
@@ -45,7 +45,35 @@ the database is created in `/tmp`, then the command or SQL script is run.
 Afterwards, the database is shutdown and deleted.
 
 
-# Database Directory Layout
+# Details For Using PGLite Without `pglite`
+
+Every PGLite database directory is self contained, in the sense that once it is
+setup, you no longer need the `pglite` executable, but can connect to,
+reconfigure and introspect the database entirely with commands stored under the
+database directory itself.
+
+This makes it easy to integrate PGLite with build tooling in any language.
+Copy the files from `pglite.d/` into a new directory, provide configuration
+data and then run `./setup` -- that's all there is to it.
+
+## Setup
+
+To include PGLite in another project, it's enough to archive `pglite.d`. To use
+the resulting archive, to create a database in a particular place, let's say
+it's `/tmp/path/to/database`, there are three steps:
+
+* unpack the archive to that directory,
+* set settings with `./settings`,
+* run the setup process with `./setup`.
+
+## Setting Settings
+
+Settings are managed with `./settings`, which allows one to set
+`postgres.conf` settings, enable or disable random port binding, and add
+schema files and data files to the initialization process.
+
+
+## Database Directory Layout
 
 Each database lives in a directory of its own and is self-contained -- you
 don't need `pglite` to use or manage it. The database directory contains the
@@ -62,7 +90,7 @@ commmands:
     run                          -- Run a command that connects to the database
     sql   -- Connect to the database with `psql`, starting the server if needed
     setup                       -- Change settings or reinitialize the database
-    settings          -- Set Postgres settinngs and add schema and seed scripts
+    settings           -- Set Postgres settings and add schema and seed scripts
     start                                          -- Start the database server
     stop                                            -- Stop the database server
     status                     -- Status (running? stopped?) of database server
@@ -70,9 +98,23 @@ commmands:
 ```
 
 
-# Weird Behavior
+## The `info` Directory
 
-PGLite does some things that seem odd at first.
+There are two types of data stored in the `info` directory: settings and
+ephemeral state.
+
+```
+.../info/                                          -- Metadata used by `pglite`
+         etc/                                             -- Permanent settings
+         var/                                -- Temporary, stateful information
+```
+
+
+# The Principle of Least My Surprise
+
+PGLite does some things that seem odd at first, but actually are important for
+ensuring it runs reliably, in each and every case, even if one is running many
+other instances of PGLite.
 
 * When the database is started, a new directory is created in `/tmp` to hold
   the UNIX sockets for the database and the config file is rewritten to hold
@@ -85,17 +127,4 @@ PGLite does some things that seem odd at first.
 * When the database is started, a random free TCP port is found each time, and
   the config file is rewritten to contain this value. This ensures that the
   database is indeed able to open a port. This behavior is disabled with
-  `--udp`, `--tcp <number>` or `--tcp <range>` (the latter selects a free port
-  but only once, at database setup time).
-
-
-# The `info` Directory
-
-There are two types of data stored in the `info` directory: settings and
-ephemeral state.
-
-```
-.../info/                                          -- Metadata used by `pglite`
-         etc/                                             -- Permanent settings
-         var/                                -- Temporary, stateful information
-```
+  `--udp`.

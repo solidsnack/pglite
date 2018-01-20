@@ -17,8 +17,31 @@ cat <<USAGE
   the server only listens on a UNIX socket unless the appropriate
   \`postgresql.conf\` settings are set directly.
 
+  With \`--schema\`, a file is added last in order to the files under
+
+    $schemas
+
+  This allows one to ensure the database is initalized with a certain schema
+  (and also keeps track of what that schema is).
+
+  With \`--data\`, a file added last in order to the files under
+
+    $data
+
+  This allows one to initialize the database with seed data, or with a dataset
+  to use for analysis.
+
+  Files passed \`--schema\` and \`--data\` are copied into the database
+  directory, so they will be run again if `setup --reflow` is called. The
+  schema files are always run first, and the data files second. These files are
+  always run at the very end of the setup process, and must be valid \`psql\`
+  scripts.
+
 USAGE
 }
+
+data=info/etc/sql/data
+schema=info/etc/sql/schema
 
 function settings {
   set_conf_parameters "$@"
