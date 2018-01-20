@@ -18,7 +18,7 @@ Many options, documented in `setup`, below, can be passed to control database
 server settings:
 
 ```
-pglite path/to/database --udp --conf wal_level=logical
+pglite path/to/database --unix --conf wal_level=logical
 ```
 
 Schema files can be passed, as well:
@@ -127,4 +127,4 @@ other instances of PGLite.
 * When the database is started, a random free TCP port is found each time, and
   the config file is rewritten to contain this value. This ensures that the
   database is indeed able to open a port. This behavior is disabled with
-  `--udp`.
+  `--unix`.

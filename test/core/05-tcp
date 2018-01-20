@@ -1,0 +1,14 @@
+#!/bin/bash
+set -o errexit -o nounset -o pipefail
+
+./settings --tcp
+./setup
+
+function check_tcp {
+  ./sql -XqAt -c '
+    SELECT client_port != -1 AND inet_server_port() IS NOT NULL
+      FROM pg_stat_activity
+  '
+}
+
+[[ $(check_tcp) = t ]]

@@ -114,6 +114,7 @@ function maybe_assign_port {
 
   if port="$(random_free_tcp_port)"
   then
+    msg "Assigning: tcp/$port"
     out "$port" > info/var/pg/port
     out 'localhost' > info/var/pg/listen_addresses
     for f in url/admin url/client jdbc/admin jdbc/client
