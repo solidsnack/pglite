@@ -1,1 +1,4 @@
-false
+#!/bin/bash
+set -o errexit -o nounset -o pipefail
+
+./settings --schema <(echo 'SELECT now()')

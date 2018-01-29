@@ -5,7 +5,7 @@ set -o errexit -o errtrace -o nounset -o pipefail
 declare program=pglite role=db
 
 # Updated once for each run.
-declare self= tmp=
+declare startd= self= tmp=
 
 export PGLITE_REPORTING_DIR="${PGLITE_REPORTING_DIR:-}"
 
@@ -29,11 +29,17 @@ function main {
 function dispatch {
   local name="$1"
 
+  startd="$(pwd -P)"
+
   # Always run command in "$self".
   cd "$self"
 
   "$@"
 }
+
+function in_startd {(
+  cd "$startd" && "$@"
+)}
 
 function ctl {
   # Note that $self is set globally, above.

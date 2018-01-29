@@ -47,16 +47,21 @@ function settings {
   local parameters=( )
   local tcp_or_unix_options=( )
 
-  for arg in "$@"
+  while [[ $# -gt 0 ]]
   do
-    case "$arg" in
-      --*) tcp_or_unix_options+=( "$arg" ) ;;
-      *)   parameters+=( "$arg" ) ;;
+    case "$1" in
+      --tcp|--unix) tcp_or_unix_options+=( "$1" ) ;;
+      --schema)     schema_files+=( "$2" ) ; shift ;;
+      --data)       data_files+=( "$2" ) ; shift ;;
+      *)            parameters+=( "$1" ) ;;
     esac
+    shift
   done
 
   set_conf_parameters "${parameters[@]:+${parameters[@]}}"
-  tcp_unix "${tcp_or_unix_options[@]}"
+  files "$schema" "${schema_files[@]:+${schema_files[@]}}"
+  files "$data" "${data_files[@]:+${data_files[@]}}"
+  tcp_unix "${tcp_or_unix_options[@]:+${tcp_or_unix_options[@]}}"
 }
 
 function set_conf_parameters {
@@ -71,6 +76,24 @@ function set_conf_parameters {
            rm -f info/etc/pg/"$val" ;;
       *)   err 'Please pass arguments of the form `var=val` or `var!`.' ;;
     esac
+  done
+}
+
+function files {
+  local location="$1" digits=0000 name= ; shift
+
+  for existing in "$location"/????-*
+  do
+    digits="$(printf '%04d\n' $((digits + 1)))"
+  done
+
+  mkdir -p "$location"
+
+  for f in "$@"
+  do
+    name="$digits-$(basename "$f")"
+    in_startd cat "$f" > "$location"/"$name"
+    digits="$(printf '%04d\n' $((digits + 1)))"
   done
 }
 
