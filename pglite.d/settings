@@ -89,6 +89,10 @@ function files {
 
   mkdir -p "$location"
 
+  if [[ $digits -gt 9999 ]]
+  then err "More than 9999 files in \`$location\` is not allowed."
+  fi
+
   for f in "$@"
   do
     name="$digits-$(basename "$f")"

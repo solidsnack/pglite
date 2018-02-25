@@ -2,7 +2,7 @@
 set -o errexit -o nounset -o pipefail
 
 function query {
-  ./run psql -XqAt -c "SELECT $1"
+  ./run psql {db} -XqAt -c "SELECT $1"
 }
 
 ./setup

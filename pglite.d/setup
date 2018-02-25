@@ -46,6 +46,7 @@ function initialize {
 
   ./start
   init_database_and_user
+  run_sql_files
 
   kill %1
   wait %1 2>/dev/null || true
@@ -80,10 +81,21 @@ function finalize {
 }
 
 function init_database_and_user {
-./sql --admin --errexit <<SQL
+./sql --admin <<SQL
 CREATE ROLE "$role" WITH SUPERUSER LOGIN REPLICATION;
 CREATE DATABASE "$role" WITH OWNER "$role";
 SQL
+}
+
+function run_sql_files {
+  local schema_files=( info/etc/sql/schema/* )  # Expands in ASCIIbetical order
+  local data_files=( info/etc/sql/data/* )      # Expands in ASCIIbetical order
+
+  for f in "${schema_files[@]}" "${data_files[@]}"
+  do
+    [[ -f $f ]] || continue
+    ./sql -f "$f"
+  done
 }
 
 source "$(dirname "${BASH_SOURCE[0]}")"/main

@@ -1,4 +1,14 @@
 #!/bin/bash
 set -o errexit -o nounset -o pipefail
 
-./settings --schema <(echo 'SELECT now()')
+schema="
+CREATE TABLE color (
+  name          text PRIMARY KEY,
+  hex           text NOT NULL CHECK (hex ~ '#[0-9a-f]{6}')
+);
+"
+
+./settings --schema <(printf '%s' "$schema")
+./setup
+
+./sql -c 'SELECT count(*) FROM color'              # Fails if table not present

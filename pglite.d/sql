@@ -2,8 +2,8 @@
 set -o errexit -o nounset -o pipefail
 function usage {
 cat <<USAGE
- USAGE: ...database-path.../sql (--errexit)? <psql-arguments>
-        ...database-path.../sql (--errexit)? --admin <psql-arguments>
+ USAGE: ...database-path.../sql (--err-ok)? <psql-arguments>
+        ...database-path.../sql (--err-ok)? --admin <psql-arguments>
 
   Connect to the database server, starting it if necessary. Any arguments are
   passed directly to \`psql\`.
@@ -11,9 +11,10 @@ cat <<USAGE
   If \`--admin\` is passed, connects to the database with a higher privilege
   level.
 
-  If \`--errexit\` is passed, it is equivalent to setting \`ON_ERROR_STOP\`:
-  the first SQL error will cause the SQL interpreter to exit with an error,
-  instead of continuing on with the other (likely failing) commands.
+  If \`--err-ok\` is passed, the first SQL error will not cause the SQL
+  interpreter to exit with an error. Instead, it will continue on with the
+  remaining (potentially failing) commands. This is equivalent to (and is
+  implemented by) disabling \`ON_ERROR_STOP\`.
 
   If this task is the only connection, the database server will shutdown when
   it completes.
@@ -24,7 +25,7 @@ USAGE
 errexit=( -v ON_ERROR_STOP=on )
 
 function sql {
-  local url= admin=false psql_args=( )
+  local url= admin=false err_ok=false psql_args=( )
 
   trap finalize EXIT
   ./start
@@ -32,11 +33,15 @@ function sql {
   while [[ $# -gt 0 ]]
   do
     case "$1" in
-      --admin)   admin=true ; shift ;;
-      --errexit) psql_args+=( "${errexit[@]}" ) ; shift ;;
-      *)         break ;;
+      --admin)  admin=true ; shift ;;
+      --err-ok) err_ok=true ; shift ;;
+      *)        break ;;
     esac
   done
+
+  if ! "$err_ok"
+  then psql_args+=( "${errexit[@]}" )
+  fi
 
   if "$admin"
   then url="$(./url --admin)"

@@ -1,4 +1,25 @@
 #!/bin/bash
 set -o errexit -o nounset -o pipefail
 
-./settings --data <(echo 'SELECT now()')
+function query {
+  ./sql -XqAt -c 'SELECT count(*) FROM color'      # Fails if table not present
+}
+
+schema="
+CREATE TABLE color (
+  name          text PRIMARY KEY,
+  hex           text NOT NULL CHECK (hex ~ '#[0-9a-f]{6}')
+);
+"
+
+data="
+INSERT INTO color VALUES ('red',   '#aa0000'),
+                         ('green', '#00aa00');
+"
+
+./settings --schema <(printf '%s' "$schema") --data <(printf '%s' "$data")
+./setup
+
+count="$(query)"
+
+[[ 2 -eq $count ]]
