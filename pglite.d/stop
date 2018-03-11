@@ -27,8 +27,7 @@ function stop {
 
   if ./status --is-running
   then
-    log 'Shutting down server...'
-    rm -rf info/var/*
+    log 'Requesting server shutdown...'
     ctl stop "${@:-${default_arguments[@]}}" >&2
   else
     log 'Server not running.'

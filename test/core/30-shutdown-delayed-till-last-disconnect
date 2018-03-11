@@ -1,0 +1,29 @@
+#!/bin/bash
+set -o errexit -o nounset -o pipefail
+
+function query {
+  ./sql -XqAt -c "$1"
+}
+
+function check {
+  local n="$RANDOM"
+  local query="SELECT $n"
+  local data="$(query "$query")"
+  set -x
+  [[ $n -eq $data ]]
+  set +x
+}
+
+function sleep_check {
+  local n="$RANDOM"
+  local query="SELECT pg_sleep(2) ; SELECT $n"
+  local data="$(query "$query")"
+  set -x
+  [[ $n -eq $data ]]
+  set +x
+}
+
+./setup
+( sleep 1 && check 0 ) &
+( sleep 1 && check 0 ) &
+sleep_check
