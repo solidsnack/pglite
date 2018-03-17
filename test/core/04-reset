@@ -1,0 +1,25 @@
+#!/bin/bash
+set -o errexit -o nounset -o pipefail
+
+# First test that we created the database and that it can run queries.
+
+function query {
+  ./sql -XqAt -c "SELECT $n"
+}
+
+./setup
+
+n="$RANDOM"
+data="$(query "$n")"
+
+set -x
+[[ $n -eq $data ]]
+set +x
+
+# Now reset it and ensure that the data directory is gone.
+
+pwd="$(pwd -P)"
+
+./reset
+
+[[ ! -d $pwd/db ]]

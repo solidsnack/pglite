@@ -86,7 +86,7 @@ commmands:
     info/                                          -- Metadata used by `pglite`
     log                                                    -- Postgres log file
     main                            -- Utilities used by control scripts, below
-    remove                  -- Stop the database server and delete the database
+    reset              -- Stop the database server and clear the data directory
     run                          -- Run a command that connects to the database
     sql   -- Connect to the database with `psql`, starting the server if needed
     setup                       -- Change settings or reinitialize the database

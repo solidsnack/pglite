@@ -1,0 +1,21 @@
+#!/bin/bash
+set -o errexit -o nounset -o pipefail
+function usage {
+cat <<USAGE
+ USAGE: ...database-path.../reset
+
+  Deletes the Postgres data directory and truncates the log file, freeing space
+  and effectively resetting the database.
+
+  Stops the server first, if it happens to be running.
+USAGE
+}
+
+function reset {
+  ./stop -m immediate -w
+  rm -rf "$self/db"
+  printf '' > "$self/log"
+}
+
+source "$(dirname "${BASH_SOURCE[0]}")"/main
+main "$@"
