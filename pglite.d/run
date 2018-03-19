@@ -72,10 +72,10 @@ function substitute {
   case "$1" in
     '{db}')         out "${url:=$(get info/var/url/user)}" ;;
     '{db.txt}')     out "${txt:=$var/url/user}" ;;
-    '{db.jdbc}')    out "${jdbc:=$var/jdbc/user}" ;;
+    '{db.jdbc}')    out "${jdbc:=$var/jdbc/user.properties}" ;;
     '{admin}')      out "${url:=$(get info/var/url/admin)}" ;;
     '{admin.txt}')  out "${txt:=$var/url/admin}" ;;
-    '{admin.jdbc}') out "${jdbc:=$var/jdbc/admin}" ;;
+    '{admin.jdbc}') out "${jdbc:=$var/jdbc/admin.properties}" ;;
     *)              err "Unknown pattern: $1" ;;
   esac
 }

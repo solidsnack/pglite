@@ -29,7 +29,7 @@ function start {
     set_default_settings
     maybe_assign_port
     apply_configuration
-    generate_urls
+    generate_conninfo
     ctl start "${@:-${default_arguments[@]}}" >&2
   fi
 }
@@ -52,7 +52,7 @@ function apply_configuration {
   done > "$self"/db/conf.d/001-configured-settings.conf
 }
 
-function generate_urls {
+function generate_conninfo {
   local port= unix= user= admin=
 
   if port="$(get info/etc/pg/port)"
@@ -64,6 +64,9 @@ function generate_urls {
     out "$admin" > info/etc/url/admin
     out "$user" > info/var/url/user
     out "$admin" > info/var/url/admin
+    mkdir -p info/var/jdbc
+    gen_jdbc "$role" "$port" "$role" > info/var/jdbc/user.properties
+    gen_jdbc postgres "$port" template1 > info/var/jdbc/admin.properties
     return 0
   fi
 
@@ -74,8 +77,13 @@ function generate_urls {
     admin="postgres://postgres@localhost:$port/template1"
     out "$user" > info/var/url/user
     out "$admin" > info/var/url/admin
+    mkdir -p info/var/jdbc
+    gen_jdbc "$role" "$port" "$role" > info/var/jdbc/user.properties
+    gen_jdbc postgres "$port" template1 > info/var/jdbc/admin.properties
     return 0
   fi
+
+  # NB: JDBC cannot connect over UNIX sockets, in general.
 
   mkdir -p info/etc/url info/var/url
   unix="$tmp"
@@ -125,6 +133,13 @@ function maybe_assign_port {
   else
     exit $?
   fi
+}
+
+function gen_jdbc {
+cat <<EOF
+url  = jdbc:postgresql://localhost:$2/$3
+user = $1
+EOF
 }
 
 source "$(dirname "${BASH_SOURCE[0]}")"/main
