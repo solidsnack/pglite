@@ -4,6 +4,8 @@ function usage {
 cat <<USAGE
  USAGE: ...database-path.../settings (<param>=<value>|<param>!)+
                                      (--tcp|--unix)?
+                                     (--schema <path/to/schema>)?
+                                     (--data <path/to/data>)?
 
   Utility for managing \`postgresql.conf\` parameters.
 
@@ -19,19 +21,19 @@ cat <<USAGE
 
   With \`--schema\`, a file is added last in order to the files under
 
-    $schemas
+    $schema
 
   This allows one to ensure the database is initalized with a certain schema
   (and also keeps track of what that schema is).
 
-  With \`--data\`, a file added last in order to the files under
+  With \`--data\`, a file is added last in order to the files under
 
     $data
 
   This allows one to initialize the database with seed data, or with a dataset
   to use for analysis.
 
-  Files passed \`--schema\` and \`--data\` are copied into the database
+  Files passed with \`--schema\` and \`--data\` are copied into the database
   directory, so they will be run again if `setup --reflow` is called. The
   schema files are always run first, and the data files second. These files are
   always run at the very end of the setup process, and must be valid \`psql\`
