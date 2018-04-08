@@ -113,16 +113,14 @@ ephemeral state.
 # The Principle of Least My Surprise
 
 PGLite does some things that seem odd at first, but actually are important for
-ensuring it runs reliably, in each and every case, even if one is running many
-other instances of PGLite.
+ensuring it runs reliably.
 
 * When the database is started, a new directory is created in `/tmp` to hold
   the UNIX sockets for the database and the config file is rewritten to hold
-  this value. This is because, the length of the path to the UNIX sockets must
+  this value. This is because the length of the path to the UNIX sockets must
   be under a certain limit; but `pglite` can create a database at an
-  arbitrary depth in the filesystem. This behavior can be disabled with
-  `--no-auto-socket`. (The length limit is a feature of the operating system,
-  not a limit of Postgres or PGLite.)
+  arbitrary depth in the filesystem. (The length limit is a limitation of the
+  operating system, not a limitation of PostgreSQL.)
 
 * When the database is started, a random free TCP port is found each time, and
   the config file is rewritten to contain this value. This ensures that the

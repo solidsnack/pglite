@@ -93,7 +93,7 @@ function serves_on_random_tcp_port {
 }
 
 function tmp {
-  out "/tmp/.$program.$(get info/token)"       # TODO: Query for system tmp dir
+  out "/tmp/$program~$USER/$(get info/token)"  # TODO: Query for system tmp dir
 }
 
 ##################################################################### Utilities
