@@ -8,6 +8,7 @@ cat <<USAGE
   and effectively resetting the database.
 
   Stops the server first, if it happens to be running.
+
 USAGE
 }
 
