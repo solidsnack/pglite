@@ -73,9 +73,9 @@ function substitute {
     '{db}')         out "${url:=$(get info/var/url/user)}" ;;
     '{db.txt}')     out "${txt:=$var/url/user}" ;;
     '{db.jdbc}')    out "${jdbc:=$var/jdbc/user.properties}" ;;
-    '{admin}')      out "${url:=$(get info/var/url/admin)}" ;;
-    '{admin.txt}')  out "${txt:=$var/url/admin}" ;;
-    '{admin.jdbc}') out "${jdbc:=$var/jdbc/admin.properties}" ;;
+    '{admin}')      out "${admin_url:=$(get info/var/url/admin)}" ;;
+    '{admin.txt}')  out "${admin_txt:=$var/url/admin}" ;;
+    '{admin.jdbc}') out "${admin_jdbc:=$var/jdbc/admin.properties}" ;;
     *)              err "Unknown pattern: $1" ;;
   esac
 }
