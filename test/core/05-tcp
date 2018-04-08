@@ -8,6 +8,7 @@ function check_tcp {
   ./sql -XqAt -c '
     SELECT client_port != -1 AND inet_server_port() IS NOT NULL
       FROM pg_stat_activity
+     WHERE pid = pg_backend_pid()
   '
 }
 
