@@ -83,7 +83,7 @@ function substitute {
 function jdbc_check {
   local path="$(substitute "$1")"
   if [[ ! -s "$path" ]]
-  then err 'JDBC does requires TCP connectivity.'
+  then err 'JDBC not available in this configuration (might be missing TCP?).'
   fi
   out "$path"
 }
