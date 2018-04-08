@@ -36,7 +36,7 @@ function needs_to_be_started {
   if ! ./status --is-running
   then
     log 'Server must be running to discover randomly assigned port.'
-    log 'Please run `.../start` and then run `.../url`.'
+    log 'Please run `start` and then run `url`.'
     return 2
   fi
 }
