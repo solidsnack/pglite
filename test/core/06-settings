@@ -1,0 +1,12 @@
+#!/bin/bash
+set -o errexit -o nounset -o pipefail
+
+./settings default_transaction_isolation=serializable timezone=Asia/Shanghai
+./setup
+
+function read_setting {
+  ./sql -XqAt -c "SHOW $1"
+}
+
+[[ $(read_setting default_transaction_isolation) = serializable ]]
+[[ $(read_setting timezone) = Asia/Shanghai ]]

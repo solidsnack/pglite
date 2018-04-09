@@ -73,9 +73,9 @@ function set_conf_parameters {
   do
     case "$arg" in
       *=*) local var="${arg%%=*}" val="${arg#*=}"
-           out "$var" > info/etc/pg/"$val" ;;
+           out "$val" > info/etc/pg/"$var" ;;
       *!)  local var="${arg%\!}"
-           rm -f info/etc/pg/"$val" ;;
+           rm -f info/etc/pg/"$var" ;;
       *)   err 'Please pass arguments of the form `var=val` or `var!`.' ;;
     esac
   done
