@@ -1,20 +1,18 @@
 #!/bin/bash
 set -o errexit -o errtrace -o nounset -o pipefail
 
-# Permanent settings.
-declare program=pglite role=db
-
 # Updated once for each run.
-declare startd= self= tmp=
-
-export PGLITE_REPORTING_DIR="${PGLITE_REPORTING_DIR:-}"
+declare program= role= startd= self= sock=
 
 function main {
   local args=()
   local name="$(name)"
 
+  # Must be set before running `get`, below.
   self="$(self)"
-  tmp="$(tmp)"
+
+  program="$(get info/etc/program)"
+  role="$(get info/etc/role)"
 
   case "${1:-}" in
     -h)     usage ;;
@@ -92,8 +90,8 @@ function serves_on_random_tcp_port {
   [[ $port && $port -eq 0 ]]
 }
 
-function tmp {
-  out "/tmp/$program~$USER/$(get info/token)"  # TODO: Query for system tmp dir
+function default_socket_dir {
+  out "/tmp/$program~$USER/$(get info/token)"
 }
 
 ##################################################################### Utilities

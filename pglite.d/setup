@@ -29,8 +29,9 @@ function initialize {
   trap finalize EXIT
 
   mkdir -p info
-  [[ -s info/token ]] || token > info/token
-  [[ -s info/t ]]     || t     > info/t
+  [[ -s info/token ]]       || token              > info/token
+  [[ -s info/t ]]           || t                  > info/t
+  [[ -s info/etc/sock ]]    || default_socket_dir > info/etc/sock
 
   local initdb_options=( --auth trust
                          --username postgres

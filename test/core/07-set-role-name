@@ -1,0 +1,14 @@
+#!/bin/bash
+set -o errexit -o nounset -o pipefail
+
+role=somebody
+
+echo "$role" > info/etc/role
+
+./setup
+
+function role_name {
+  ./sql -XqAt -c "SELECT current_user"
+}
+
+[[ $(role_name) = $role ]]

@@ -25,7 +25,7 @@ function start {
   else
     log 'Starting server...'
     handle_var
-    handle_tmp
+    handle_sock
     set_default_settings
     maybe_assign_port
     apply_configuration
@@ -86,7 +86,7 @@ function generate_conninfo {
   # NB: JDBC cannot connect over UNIX sockets, in general.
 
   mkdir -p info/etc/url info/var/url
-  unix="$tmp"
+  unix="$(get info/etc/sock)"
   user="postgres://$role@[$unix]/$role"
   admin="postgres://postgres@[$unix]/template1"
   out "$user" > info/etc/url/user
@@ -104,10 +104,10 @@ function set_default_settings {
   out "UTC"        > info/var/pg/timezone
 }
 
-function handle_tmp {
-  rm -rf "$tmp"
-  mkdir -p "$tmp"
-  out "'$tmp'" > info/var/pg/unix_socket_directories
+function handle_sock {
+  local unix="$(get info/etc/sock)"
+  mkdir -p "$unix"
+  out "'$unix'" > info/var/pg/unix_socket_directories
 }
 
 function handle_var {
